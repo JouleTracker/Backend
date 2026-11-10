@@ -17,6 +17,14 @@ public enum SensorNetworkStatus {
         return label;
     }
 
+    public String getDisplayName() {
+        return label;
+    }
+
+    public static SensorNetworkStatus fromDisplayName(String text) {
+        return fromString(text);
+    }
+
     public static SensorNetworkStatus fromString(String text) {
         if (text == null || text.isBlank()) {
             return OFFLINE;

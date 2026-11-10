@@ -18,6 +18,14 @@ public enum DeviceStatus {
         return label;
     }
 
+    public String getDisplayName() {
+        return label;
+    }
+
+    public static DeviceStatus fromDisplayName(String text) {
+        return fromString(text);
+    }
+
     public static DeviceStatus fromString(String text) {
         if (text == null || text.isBlank()) {
             return OFF;
