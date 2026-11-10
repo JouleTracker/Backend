@@ -128,6 +128,15 @@ public class Sensor extends AbstractDomainAggregateRoot<Sensor> {
     }
 
     /**
+     * Unassigns the reference appliance profile.
+     */
+    public void unassignApplianceProfile() {
+        this.applianceProfileId = null;
+        this.applianceProfileName = null;
+        this.recommendedDailyKwh = null;
+    }
+
+    /**
      * Records new power telemetry measurements.
      */
     public void recordTelemetry(Double powerKw, Double addedKwh, String timestamp) {
