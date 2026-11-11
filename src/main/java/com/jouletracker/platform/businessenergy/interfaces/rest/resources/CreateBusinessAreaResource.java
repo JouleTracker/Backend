@@ -14,16 +14,28 @@ public record CreateBusinessAreaResource(
         @Size(max = 100)
         @Schema(
                 description = "Name of the physical business area",
-                example = "Almacen"
+                example = "Almacén Principal"
         )
         String name,
+
+        @Schema(
+                description = "Floor or level of the physical zone",
+                example = "Piso 1"
+        )
+        String floor,
 
         @Size(max = 255)
         @Schema(
                 description = "Optional description of the business area",
-                example = "Area destinada al almacenamiento de productos"
+                example = "Área destinada al almacenamiento de insumos y mercadería"
         )
         String description,
+
+        @Schema(
+                description = "Material icon identifier for UI rendering",
+                example = "storefront"
+        )
+        String icon,
 
         @Schema(
                 description = "Owner user identifier",

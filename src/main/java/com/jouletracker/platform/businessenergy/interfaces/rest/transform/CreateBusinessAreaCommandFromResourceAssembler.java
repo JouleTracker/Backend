@@ -19,7 +19,9 @@ public final class CreateBusinessAreaCommandFromResourceAssembler {
         return new CreateBusinessAreaCommand(
                 userId,
                 resource.name(),
-                resource.description()
+                resource.floor(),
+                resource.description(),
+                resource.icon()
         );
     }
 }

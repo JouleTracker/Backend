@@ -23,8 +23,14 @@ public class BusinessAreaPersistenceEntity extends AuditableAbstractPersistenceE
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
+    @Column(name = "floor", length = 50)
+    private String floor;
+
     @Column(name = "description", length = 255)
     private String description;
+
+    @Column(name = "icon", length = 50)
+    private String icon;
 
     public BusinessAreaPersistenceEntity() {
     }

@@ -22,14 +22,26 @@ public record BusinessAreaResource(
 
         @Schema(
                 description = "Name of the physical business area",
-                example = "Almacen"
+                example = "Almacén"
         )
         String name,
 
         @Schema(
-                description = "Description of the business area",
-                example = "Area destinada al almacenamiento de productos"
+                description = "Floor or level of the physical zone",
+                example = "Piso 1"
         )
-        String description
+        String floor,
+
+        @Schema(
+                description = "Description of the business area",
+                example = "Área destinada al almacenamiento de insumos"
+        )
+        String description,
+
+        @Schema(
+                description = "Material icon identifier for UI rendering",
+                example = "storefront"
+        )
+        String icon
 ) {
 }

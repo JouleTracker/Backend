@@ -21,7 +21,9 @@ public final class BusinessAreaPersistenceAssembler {
                 entity.getId(),
                 entity.getUserId(),
                 entity.getName(),
-                entity.getDescription()
+                entity.getFloor(),
+                entity.getDescription(),
+                entity.getIcon()
         );
     }
 
@@ -34,7 +36,9 @@ public final class BusinessAreaPersistenceAssembler {
         entity.setId(domain.getId());
         entity.setUserId(domain.getUserId());
         entity.setName(domain.getName());
+        entity.setFloor(domain.getFloor());
         entity.setDescription(domain.getDescription());
+        entity.setIcon(domain.getIcon());
 
         return entity;
     }

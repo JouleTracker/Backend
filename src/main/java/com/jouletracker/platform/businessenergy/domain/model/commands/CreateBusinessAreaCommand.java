@@ -7,6 +7,11 @@ package com.jouletracker.platform.businessenergy.domain.model.commands;
 public record CreateBusinessAreaCommand(
         Long userId,
         String name,
-        String description
+        String floor,
+        String description,
+        String icon
 ) {
+    public CreateBusinessAreaCommand(Long userId, String name, String description) {
+        this(userId, name, "Piso 1", description, "storefront");
+    }
 }

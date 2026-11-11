@@ -21,7 +21,9 @@ public final class BusinessAreaResourceFromEntityAssembler {
                 entity.getId(),
                 entity.getUserId(),
                 entity.getName(),
-                entity.getDescription()
+                entity.getFloor(),
+                entity.getDescription(),
+                entity.getIcon()
         );
     }
 }

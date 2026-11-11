@@ -7,6 +7,7 @@ import com.jouletracker.platform.businessenergy.infrastructure.persistence.jpa.r
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * JPA adapter implementing the BusinessArea domain repository.
@@ -30,6 +31,12 @@ public class BusinessAreaRepositoryImpl implements BusinessAreaRepository {
     }
 
     @Override
+    public Optional<BusinessArea> findById(Long id) {
+        return businessAreaPersistenceRepository.findById(id)
+                .map(BusinessAreaPersistenceAssembler::toDomainFromPersistence);
+    }
+
+    @Override
     public BusinessArea save(BusinessArea businessArea) {
         var entity = BusinessAreaPersistenceAssembler.toPersistenceFromDomain(businessArea);
         var savedEntity = businessAreaPersistenceRepository.save(entity);
@@ -40,5 +47,10 @@ public class BusinessAreaRepositoryImpl implements BusinessAreaRepository {
     @Override
     public boolean existsByUserIdAndName(Long userId, String name) {
         return businessAreaPersistenceRepository.existsByUserIdAndName(userId, name);
+    }
+
+    @Override
+    public void deleteById(Long id) {
+        businessAreaPersistenceRepository.deleteById(id);
     }
 }
