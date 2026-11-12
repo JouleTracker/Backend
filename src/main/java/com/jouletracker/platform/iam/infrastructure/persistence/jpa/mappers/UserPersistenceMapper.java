@@ -92,8 +92,21 @@ public class UserPersistenceMapper {
         entity.setStatus(user.getStatus());
         entity.setEmailVerified(user.isEmailVerified());
 
-        entity.clearRoles();
-        assignRolesToEntity(entity, user.getRoles());
+        Set<String> targetDbRoleNames = user.getRoles().stream()
+                .map(Role::toDbName)
+                .collect(Collectors.toSet());
+
+        entity.getUserRoles().removeIf(ur -> !targetDbRoleNames.contains(ur.getRole().getName()));
+
+        Set<String> existingDbRoleNames = entity.getUserRoles().stream()
+                .map(ur -> ur.getRole().getName())
+                .collect(Collectors.toSet());
+
+        Set<Role> rolesToAdd = user.getRoles().stream()
+                .filter(role -> !existingDbRoleNames.contains(role.toDbName()))
+                .collect(Collectors.toSet());
+
+        assignRolesToEntity(entity, rolesToAdd);
     }
 
     private void assignRolesToEntity(UserEntity entity, Set<Role> roles) {
