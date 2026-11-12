@@ -12,8 +12,8 @@ import org.springframework.validation.annotation.Validated;
 public class BrevoProperties {
 
     private String apiKey = "";
-    private String senderEmail = "no-reply@jouletracker.com";
-    private String senderName = "JouleTracker Platform";
+    private String senderEmail = "jouletacker@gmail.com";
+    private String senderName = "JouleTracker";
     private String apiUrl = "https://api.brevo.com/v3/smtp/email";
 
     @Min(1)
