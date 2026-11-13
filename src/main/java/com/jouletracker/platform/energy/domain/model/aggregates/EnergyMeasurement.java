@@ -1,6 +1,7 @@
 package com.jouletracker.platform.energy.domain.model.aggregates;
 
 import com.jouletracker.platform.energy.domain.model.commands.RegisterEnergyMeasurementCommand;
+import com.jouletracker.platform.energy.domain.model.events.EnergyMeasurementRegisteredEvent;
 import com.jouletracker.platform.shared.domain.model.aggregates.AbstractDomainAggregateRoot;
 import lombok.Getter;
 import lombok.Setter;
@@ -71,6 +72,19 @@ public class EnergyMeasurement extends AbstractDomainAggregateRoot<EnergyMeasure
                 null,
                 command.measuredAt()
         );
+    }
+
+    public void markAsRegistered() {
+        registerDomainEvent(new EnergyMeasurementRegisteredEvent(
+                this.id,
+                this.userId,
+                this.sensorId,
+                this.deviceId,
+                this.deviceName,
+                this.powerKw,
+                this.energyKwh,
+                this.measuredAt
+        ));
     }
 
     public static double calculateCost(double kwh) {

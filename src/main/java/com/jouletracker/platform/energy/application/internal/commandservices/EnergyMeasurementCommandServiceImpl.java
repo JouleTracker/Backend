@@ -64,17 +64,19 @@ public class EnergyMeasurementCommandServiceImpl implements EnergyMeasurementCom
         );
 
         var measurement = new EnergyMeasurement(enrichedCommand);
-        var saved = measurementRepository.save(measurement);
 
-        if (saved.getSensorId() != null) {
-            String timestamp = saved.getMeasuredAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        if (measurement.getSensorId() != null) {
+            String timestamp = measurement.getMeasuredAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             devicesContextFacade.updateSensorTelemetry(
-                    saved.getSensorId(),
-                    saved.getPowerKw(),
-                    saved.getEnergyKwh(),
+                    measurement.getSensorId(),
+                    measurement.getPowerKw(),
+                    measurement.getEnergyKwh(),
                     timestamp
             );
         }
+
+        measurement.markAsRegistered();
+        var saved = measurementRepository.save(measurement);
 
         return Result.success(saved);
     }
