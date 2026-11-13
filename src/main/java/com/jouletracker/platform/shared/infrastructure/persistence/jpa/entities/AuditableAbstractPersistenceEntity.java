@@ -16,7 +16,7 @@ import java.util.Date;
  * This class intentionally lives in the infrastructure layer to keep JPA and
  * Spring Data auditing concerns out of the domain model.</p>
  *
- * <p>All bounded-context JPA persistence entities should extend this class
+ * <p>All bounded-context JPA persistence entities using {@code Long} identity should extend this class
  * instead of placing {@code @Id} and auditing fields directly.</p>
  */
 @Getter
@@ -38,4 +38,3 @@ public abstract class AuditableAbstractPersistenceEntity {
     private Date updatedAt;
 
 }
-

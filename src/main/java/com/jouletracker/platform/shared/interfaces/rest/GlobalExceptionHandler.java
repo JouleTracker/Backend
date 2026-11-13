@@ -1,19 +1,21 @@
 package com.jouletracker.platform.shared.interfaces.rest;
 
-
-
 import com.jouletracker.platform.shared.application.result.ApplicationError;
 import com.jouletracker.platform.shared.interfaces.rest.transform.ProblemDetailFromApplicationErrorAssembler;
 import org.jspecify.annotations.NullMarked;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.net.URI;
 import java.text.MessageFormat;
 import java.util.Map;
 import java.util.MissingResourceException;
@@ -28,6 +30,7 @@ import java.util.ResourceBundle;
 @RestControllerAdvice
 @NullMarked
 public class GlobalExceptionHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private static final String MESSAGES_BASENAME = "messages";
 
     /**
@@ -44,13 +47,13 @@ public class GlobalExceptionHandler {
         var errorDetails = fieldErrors.isEmpty()
                 ? resolveMessageOrDefault("validation.request.failed", "Request validation failed")
                 : fieldErrors.stream()
-                        .map(error -> "%s %s: %s".formatted(
-                                validationPrefix,
-                                error.getField(),
-                                error.getDefaultMessage()
-                        ))
-                        .reduce((a, b) -> a + "; " + b)
-                        .orElse(resolveMessageOrDefault("validation.request.failed", "Request validation failed"));
+                .map(error -> "%s %s: %s".formatted(
+                        validationPrefix,
+                        error.getField(),
+                        error.getDefaultMessage()
+                ))
+                .reduce((a, b) -> a + "; " + b)
+                .orElse(resolveMessageOrDefault("validation.request.failed", "Request validation failed"));
 
         var invalidParams = fieldErrors.stream()
                 .map(err -> Map.of(
@@ -66,6 +69,55 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problemDetail);
+    }
+
+    /**
+     * Handles missing or malformed JSON request payloads.
+     *
+     * @param ex the HTTP message not readable exception
+     * @return error response with BAD_REQUEST status
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ProblemDetail> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        var applicationError = ApplicationError.validationError(
+                "request-body",
+                resolveMessageOrDefault("validation.request.malformed", "Request body is missing or malformed JSON")
+        );
+        return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
+    }
+
+    /**
+     * Handles unsupported or missing Content-Type headers when a JSON request body is expected.
+     *
+     * @param ex the HTTP media type not supported exception
+     * @return error response with BAD_REQUEST status
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ProblemDetail> handleHttpMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
+        var applicationError = ApplicationError.validationError(
+                "Content-Type",
+                resolveMessageOrDefault("validation.request.media-type", "Request body must be sent with Content-Type: application/json")
+        );
+        return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
+    }
+
+    /**
+     * Handles missing required query or form parameters.
+     *
+     * @param ex the missing request parameter exception
+     * @return error response with BAD_REQUEST status
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ProblemDetail> handleMissingServletRequestParameter(MissingServletRequestParameterException ex) {
+        var applicationError = ApplicationError.validationError(
+                ex.getParameterName(),
+                resolveMessageOrDefault(
+                        "validation.parameter.missing",
+                        "Required request parameter '" + ex.getParameterName() + "' is missing",
+                        ex.getParameterName()
+                )
+        );
+        return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
     }
 
     /**
@@ -92,9 +144,10 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ProblemDetail> handleRuntimeException(RuntimeException ex) {
+        LOGGER.error("Unhandled runtime exception caught by GlobalExceptionHandler", ex);
         var applicationError = ApplicationError.unexpected(
                 resolveMessageOrDefault("error.unexpected.context", "global-exception-handler"),
-                ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred"
+                "An unexpected error occurred"
         );
         return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
     }
@@ -108,9 +161,10 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleException(Exception ex) {
+        LOGGER.error("Unhandled exception caught by GlobalExceptionHandler", ex);
         var applicationError = ApplicationError.unexpected(
                 resolveMessageOrDefault("error.unexpected.context", "global-exception-handler"),
-                ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred"
+                "An unexpected error occurred"
         );
         return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
     }
@@ -127,4 +181,3 @@ public class GlobalExceptionHandler {
         }
     }
 }
-
