@@ -16,8 +16,8 @@ import java.util.List;
 /**
  * Adapter implementing {@link EmailService} using Brevo's transactional email API.
  *
- * <p>Delivery errors are propagated to the application use case so registration is not
- * reported as successful when Brevo rejects or cannot receive the request.</p>
+ * <p>Network or configuration failures are logged and handled gracefully so user
+ * registration is not blocked when Brevo is unavailable or unconfigured (TS-19).</p>
  */
 @Service
 @NullMarked
@@ -45,6 +45,12 @@ public class BrevoEmailService implements EmailService {
     public void sendVerificationEmail(EmailAddress recipient, String recipientName, String verificationToken) {
         String verificationUrl = buildVerificationUrl(verificationToken);
 
+        if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
+            LOGGER.warn("Brevo API key is not configured. Skipping email delivery. Verification URL for {}: {}",
+                    recipient.value(), verificationUrl);
+            return;
+        }
+
         var sender = new BrevoSendSmtpEmailRequest.Sender(
                 properties.getSenderName(),
                 properties.getSenderEmail()
@@ -60,8 +66,13 @@ public class BrevoEmailService implements EmailService {
 
         var request = new BrevoSendSmtpEmailRequest(sender, to, subject, htmlContent);
 
-        brevoRestClient.sendTransactionalEmail(request);
-        LOGGER.info("Verification email accepted by Brevo.");
+        try {
+            brevoRestClient.sendTransactionalEmail(request);
+            LOGGER.info("Verification email accepted by Brevo.");
+        } catch (Exception ex) {
+            LOGGER.error("Failed to send verification email via Brevo for {}. Registration will proceed. Fallback verification URL: {}",
+                    recipient.value(), verificationUrl, ex);
+        }
     }
 
     private String buildVerificationUrl(String token) {

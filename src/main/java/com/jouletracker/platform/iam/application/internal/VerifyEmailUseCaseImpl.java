@@ -59,9 +59,6 @@ public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
             ));
         }
 
-        token.markAsUsed();
-        tokenRepository.save(token);
-
         Optional<User> optionalUser = userRepository.findById(token.getUserId());
         if (optionalUser.isEmpty()) {
             LOGGER.error("Data inconsistency: a user associated with a verification token was not found.");
@@ -70,6 +67,9 @@ public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
                     String.valueOf(token.getUserId().value())
             ));
         }
+
+        token.markAsUsed();
+        tokenRepository.save(token);
 
         User user = optionalUser.get();
         user.confirmEmail();
