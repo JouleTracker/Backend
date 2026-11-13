@@ -1,17 +1,16 @@
 package com.jouletracker.platform.shared.domain.model.aggregates;
 
 import org.jspecify.annotations.NullMarked;
-import org.springframework.data.domain.AbstractAggregateRoot;
-
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Base class for all domain aggregate roots.
  *
- * <p>Extends Spring Data Commons' {@link AbstractAggregateRoot} to gain
- * domain event registration support ({@code registerEvent}) without
- * pulling in any JPA or persistence concern. Identity and auditing are
- * intentionally left to the infrastructure layer.</p>
+ * <p>Maintains domain events without importing Spring Data, JPA, or any
+ * persistence concern. Identity and auditing are intentionally left to the
+ * infrastructure layer.</p>
  *
  * <p>All bounded-context domain aggregate roots should extend this class.
  * Persistence-specific behavior belongs to dedicated infrastructure
@@ -20,8 +19,9 @@ import java.util.Collection;
  * @param <T> the concrete aggregate root type
  */
 @NullMarked
-public abstract class AbstractDomainAggregateRoot<T extends AbstractDomainAggregateRoot<T>>
-        extends AbstractAggregateRoot<T> {
+public abstract class AbstractDomainAggregateRoot<T extends AbstractDomainAggregateRoot<T>> {
+
+    private final List<Object> domainEvents = new ArrayList<>();
 
     /**
      * Registers a domain event to be published after this aggregate is saved.
@@ -29,7 +29,7 @@ public abstract class AbstractDomainAggregateRoot<T extends AbstractDomainAggreg
      * @param event the domain event to register
      */
     protected void registerDomainEvent(Object event) {
-        super.registerEvent(event);
+        domainEvents.add(event);
     }
 
     /**
@@ -39,17 +39,15 @@ public abstract class AbstractDomainAggregateRoot<T extends AbstractDomainAggreg
      *
      * @return the registered domain events
      */
-    @Override
     public Collection<Object> domainEvents() {
-        return super.domainEvents();
+        return List.copyOf(domainEvents);
     }
 
     /**
      * Clears all registered domain events.
      * Exposed as {@code public} so repository adapters can clear events after publishing.
      */
-    @Override
     public void clearDomainEvents() {
-        super.clearDomainEvents();
+        domainEvents.clear();
     }
 }

@@ -1,6 +1,5 @@
 package com.jouletracker.platform.shared.interfaces.rest.transform;
 
-
 import com.jouletracker.platform.shared.application.result.ApplicationError;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -64,6 +63,8 @@ public final class ProblemDetailFromApplicationErrorAssembler {
     private static URI toProblemTypeUri(String errorCode) {
         String slug = switch (errorCode) {
             case "VALIDATION_ERROR" -> "validation-error";
+            case "UNAUTHORIZED", "INVALID_CREDENTIALS" -> "unauthorized";
+            case "FORBIDDEN", "UNVERIFIED_EMAIL", "EMAIL_NOT_VERIFIED" -> "forbidden";
             case "BUSINESS_RULE_VIOLATION" -> "business-rule-violation";
             case "UNEXPECTED_ERROR" -> "unexpected-error";
             case String s when s.endsWith("_NOT_FOUND") -> "not-found";
@@ -76,6 +77,8 @@ public final class ProblemDetailFromApplicationErrorAssembler {
     private static String toProblemTitle(String errorCode, HttpStatusCode status) {
         return switch (errorCode) {
             case "VALIDATION_ERROR" -> "Validation Error";
+            case "UNAUTHORIZED", "INVALID_CREDENTIALS" -> "Unauthorized";
+            case "FORBIDDEN", "UNVERIFIED_EMAIL", "EMAIL_NOT_VERIFIED" -> "Forbidden";
             case "BUSINESS_RULE_VIOLATION" -> "Business Rule Violation";
             case String s when s.endsWith("_NOT_FOUND") -> "Resource Not Found";
             case String s when s.endsWith("_CONFLICT") -> "Resource Conflict";
@@ -106,6 +109,8 @@ public final class ProblemDetailFromApplicationErrorAssembler {
     private static String toMessageKeyFromErrorCode(String errorCode) {
         return switch (errorCode) {
             case "VALIDATION_ERROR" -> "error.validation.message";
+            case "UNAUTHORIZED", "INVALID_CREDENTIALS" -> "error.invalid-credentials.message";
+            case "FORBIDDEN", "UNVERIFIED_EMAIL", "EMAIL_NOT_VERIFIED" -> "error.unverified-email.message";
             case "BUSINESS_RULE_VIOLATION" -> "error.business-rule.message";
             case "UNEXPECTED_ERROR" -> "error.unexpected.message";
             case String s when s.endsWith("_NOT_FOUND") -> "error.not-found.message";
@@ -161,6 +166,8 @@ public final class ProblemDetailFromApplicationErrorAssembler {
     public static HttpStatusCode toStatusFromErrorCode(String errorCode) {
         return switch (errorCode) {
             case "VALIDATION_ERROR" -> HttpStatus.BAD_REQUEST;
+            case "UNAUTHORIZED", "INVALID_CREDENTIALS" -> HttpStatus.UNAUTHORIZED;
+            case "FORBIDDEN", "UNVERIFIED_EMAIL", "EMAIL_NOT_VERIFIED" -> HttpStatus.FORBIDDEN;
             case String s when s.endsWith("_NOT_FOUND") -> HttpStatus.NOT_FOUND;
             case "BUSINESS_RULE_VIOLATION" -> HttpStatusCode.valueOf(422);
             case String s when s.endsWith("_CONFLICT") -> HttpStatus.CONFLICT;
