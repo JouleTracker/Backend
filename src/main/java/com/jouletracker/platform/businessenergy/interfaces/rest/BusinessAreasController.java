@@ -5,7 +5,11 @@ import com.jouletracker.platform.businessenergy.application.queryservices.Busine
 import com.jouletracker.platform.businessenergy.domain.model.commands.DeleteBusinessAreaCommand;
 import com.jouletracker.platform.businessenergy.domain.model.queries.GetAllBusinessAreasQuery;
 import com.jouletracker.platform.businessenergy.domain.model.queries.GetBusinessAreaByIdQuery;
+import com.jouletracker.platform.businessenergy.domain.model.queries.GetBusinessAreaMetricsByIdQuery;
+import com.jouletracker.platform.businessenergy.domain.model.queries.GetBusinessDashboardMetricsQuery;
+import com.jouletracker.platform.businessenergy.interfaces.rest.resources.BusinessAreaMetricsResource;
 import com.jouletracker.platform.businessenergy.interfaces.rest.resources.BusinessAreaResource;
+import com.jouletracker.platform.businessenergy.interfaces.rest.resources.BusinessDashboardMetricsResource;
 import com.jouletracker.platform.businessenergy.interfaces.rest.resources.CreateBusinessAreaResource;
 import com.jouletracker.platform.businessenergy.interfaces.rest.resources.UpdateBusinessAreaResource;
 import com.jouletracker.platform.businessenergy.interfaces.rest.transform.BusinessAreaResourceFromEntityAssembler;
@@ -110,6 +114,51 @@ public class BusinessAreasController {
                 .toList();
 
         return ResponseEntity.ok(resources);
+    }
+
+    /**
+     * Retrieves aggregated dashboard energy metrics across all business areas (TS-17).
+     */
+    @GetMapping("/metrics")
+    @Operation(
+            summary = "Get business dashboard energy metrics",
+            description = "Retrieves combined consumption totals and per-area metrics for a MYPE establishment (TS-17)."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Business dashboard metrics retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = BusinessDashboardMetricsResource.class)))
+    })
+    public ResponseEntity<BusinessDashboardMetricsResource> getBusinessDashboardMetrics(
+            @RequestParam(required = false, defaultValue = "1") Long userId,
+            @RequestParam(required = false, defaultValue = "daily") String period) {
+
+        var query = new GetBusinessDashboardMetricsQuery(userId, period);
+        var metrics = businessAreaQueryService.handle(query);
+        return ResponseEntity.ok(BusinessAreaResourceFromEntityAssembler.toDashboardResourceFromEntity(metrics));
+    }
+
+    /**
+     * Retrieves energy metrics for a single physical business area (TS-17).
+     */
+    @GetMapping("/{id}/metrics")
+    @Operation(
+            summary = "Get business area energy metrics",
+            description = "Retrieves real-time and period energy consumption metrics for a specific business area (TS-17)."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Business area metrics retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = BusinessAreaMetricsResource.class))),
+            @ApiResponse(responseCode = "404", description = "Business area not found")
+    })
+    public ResponseEntity<BusinessAreaMetricsResource> getBusinessAreaMetricsById(
+            @PathVariable @Parameter(description = "Business area identifier", example = "1") Long id,
+            @RequestParam(required = false, defaultValue = "daily") String period) {
+
+        var query = new GetBusinessAreaMetricsByIdQuery(id, period);
+        return businessAreaQueryService.handle(query)
+                .map(BusinessAreaResourceFromEntityAssembler::toMetricsResourceFromEntity)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     /**
