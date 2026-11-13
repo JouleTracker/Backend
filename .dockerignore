@@ -1,0 +1,13 @@
+.git/
+.gitignore
+.gitattributes
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example
+target/
+*.iml
+*.log
+HELP.md
+IAM_TECHNICAL_DOCUMENTATION.md
