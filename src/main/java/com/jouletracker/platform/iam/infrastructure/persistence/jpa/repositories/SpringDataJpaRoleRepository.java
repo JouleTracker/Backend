@@ -5,13 +5,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Spring Data JPA repository for {@link RoleEntity}.
  */
 @Repository
-public interface SpringDataJpaRoleRepository extends JpaRepository<RoleEntity, UUID> {
+public interface SpringDataJpaRoleRepository extends JpaRepository<RoleEntity, Long> {
 
     /**
      * Finds a role entity by its unique name (e.g., "USER", "ADMIN").

@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * REST controller exposing user query endpoints.
@@ -54,21 +53,21 @@ public class UsersController {
     }
 
     /**
-     * Retrieves a specific user profile by their UUID.
+     * Retrieves a specific user profile by their ID.
      *
-     * @param userId the user's UUID
+     * @param userId the user's Long ID
      * @return 200 OK with UserResource, or 404 Not Found
      */
     @GetMapping("/{userId}")
-    @Operation(summary = "Get user by ID", description = "Retrieves a registered user profile by its unique UUID.")
+    @Operation(summary = "Get user by ID", description = "Retrieves a registered user profile by its unique ID.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "User found",
                     content = @Content(schema = @Schema(implementation = UserResource.class))),
             @ApiResponse(responseCode = "404", description = "User not found")
     })
     public ResponseEntity<UserResource> getUserById(
-            @Parameter(description = "Unique UUID of the user", required = true)
-            @PathVariable UUID userId) {
+            @Parameter(description = "Unique ID of the user", required = true)
+            @PathVariable Long userId) {
         return userQueryService.handle(new GetUserByIdQuery(userId))
                 .map(UserResourceAssembler::toResourceFromUserResult)
                 .map(ResponseEntity::ok)

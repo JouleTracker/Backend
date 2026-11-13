@@ -11,7 +11,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -19,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("User Aggregate Root Unit Tests")
 class UserTest {
 
-    private static final UUID TEST_USER_ID = UUID.fromString("67417618-dd5e-11f1-a688-50ebf6e6183d");
+    private static final Long TEST_USER_ID = 1L;
 
     @Test
     @DisplayName("Should create unverified user and register UserRegisteredEvent after persistence ID assignment")
@@ -89,7 +88,7 @@ class UserTest {
         user.assignId(UserId.of(TEST_USER_ID));
         assertThat(user.getId().value()).isEqualTo(TEST_USER_ID);
 
-        UUID secondId = UUID.randomUUID();
+        Long secondId = 2L;
         assertThatThrownBy(() -> user.assignId(UserId.of(secondId)))
                 .isInstanceOf(IllegalStateException.class);
     }

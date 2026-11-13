@@ -5,7 +5,6 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Domain service contract for JSON Web Token (JWT) generation, validation, and claim parsing.
@@ -41,9 +40,9 @@ public interface TokenService {
      * Extracts the user ID claim from a valid token.
      *
      * @param token the encoded JWT string
-     * @return the UUID user ID, or null if not found
+     * @return the Long user ID, or null if not found
      */
-    @Nullable UUID extractUserId(String token);
+    @Nullable Long extractUserId(String token);
 
     /**
      * Extracts the list of granted authority roles from a valid token.

@@ -8,7 +8,6 @@ import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Anti-Corruption Layer (ACL) facade exposing IAM user lookup capabilities
@@ -25,22 +24,22 @@ public class IamContextFacade {
     }
 
     /**
-     * Checks whether a user with the given UUID exists.
+     * Checks whether a user with the given ID exists.
      *
-     * @param userId the user UUID
+     * @param userId the user ID
      * @return true if the user exists
      */
-    public boolean existsUserById(UUID userId) {
+    public boolean existsUserById(Long userId) {
         return userRepository.findById(UserId.of(userId)).isPresent();
     }
 
     /**
-     * Fetches a user's UUID by their email address.
+     * Fetches a user's ID by their email address.
      *
      * @param email the user's email address
-     * @return an Optional containing the user UUID if found
+     * @return an Optional containing the user ID if found
      */
-    public Optional<UUID> fetchUserIdByEmail(String email) {
+    public Optional<Long> fetchUserIdByEmail(String email) {
         try {
             return userRepository.findByEmail(EmailAddress.of(email))
                     .map(user -> user.getId().value());
@@ -52,11 +51,11 @@ public class IamContextFacade {
     /**
      * Checks whether a user possesses the specified security role.
      *
-     * @param userId the user UUID
+     * @param userId the user ID
      * @param role   the role to check
      * @return true if the user exists and holds the role
      */
-    public boolean userHasRole(UUID userId, Role role) {
+    public boolean userHasRole(Long userId, Role role) {
         return userRepository.findById(UserId.of(userId))
                 .map(user -> user.getRoles().contains(role))
                 .orElse(false);

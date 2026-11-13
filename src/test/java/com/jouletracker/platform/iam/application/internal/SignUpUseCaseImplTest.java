@@ -18,7 +18,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -30,7 +29,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("SignUpUseCaseImpl Unit Tests")
 class SignUpUseCaseImplTest {
 
-    private static final UUID TEST_USER_ID = UUID.fromString("67417618-dd5e-11f1-a688-50ebf6e6183d");
+    private static final Long TEST_USER_ID = 1L;
 
     @Mock
     private UserRepository userRepository;

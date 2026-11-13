@@ -13,7 +13,6 @@ import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -61,10 +60,8 @@ public class UserPersistenceMapper {
      * @return a new UserEntity instance
      */
     public UserEntity toEntity(User user) {
-        UUID entityId = user.getId().value() != null ? user.getId().value() : UUID.randomUUID();
-
         var entity = new UserEntity(
-                entityId,
+                user.getId().value(),
                 user.getEmail().value(),
                 user.getPasswordHash().value(),
                 user.getFirstName(),
@@ -114,7 +111,7 @@ public class UserPersistenceMapper {
             String dbRoleName = role.toDbName();
             RoleEntity roleEntity = roleRepository.findByName(dbRoleName)
                     .orElseGet(() -> {
-                        var fallbackRole = new RoleEntity(UUID.randomUUID(), dbRoleName, "Role " + dbRoleName, null);
+                        var fallbackRole = new RoleEntity(null, dbRoleName, "Role " + dbRoleName, null);
                         return roleRepository.save(fallbackRole);
                     });
             entity.addRole(roleEntity);

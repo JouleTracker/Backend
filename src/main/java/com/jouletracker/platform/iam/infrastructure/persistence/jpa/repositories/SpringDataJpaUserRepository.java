@@ -5,13 +5,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Spring Data JPA repository for {@link UserEntity}.
  */
 @Repository
-public interface SpringDataJpaUserRepository extends JpaRepository<UserEntity, UUID> {
+public interface SpringDataJpaUserRepository extends JpaRepository<UserEntity, Long> {
 
     /**
      * Finds a user entity by unique email address.

@@ -10,14 +10,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("JwtTokenService Unit Tests")
 class JwtTokenServiceTest {
 
-    private static final UUID TEST_USER_ID = UUID.fromString("67417618-dd5e-11f1-a688-50ebf6e6183d");
+    private static final Long TEST_USER_ID = 1L;
     private JwtTokenService tokenService;
 
     @BeforeEach

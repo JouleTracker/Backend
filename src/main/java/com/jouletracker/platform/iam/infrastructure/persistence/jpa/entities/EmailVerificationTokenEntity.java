@@ -11,18 +11,13 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
-import java.util.UUID;
 
 /**
  * JPA persistence entity mapped to the database table storing single-use email verification tokens.
  *
- * <p>Extends {@link AuditablePersistenceEntity} to inherit auditing fields.
- * Preserves the autoincremental {@code Long} identifier for token primary key while referencing
- * the user by {@code UUID} mapped to {@code CHAR(36)}.</p>
+ * <p>Extends {@link AuditablePersistenceEntity} to inherit auditing fields.</p>
  */
 @Getter
 @Setter
@@ -46,9 +41,8 @@ public class EmailVerificationTokenEntity extends AuditablePersistenceEntity {
     @Column(nullable = false, length = 64)
     private String token;
 
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "user_id", length = 36, nullable = false)
-    private UUID userId;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
@@ -59,7 +53,7 @@ public class EmailVerificationTokenEntity extends AuditablePersistenceEntity {
     public EmailVerificationTokenEntity() {
     }
 
-    public EmailVerificationTokenEntity(String token, UUID userId, Instant expiresAt, Instant usedAt) {
+    public EmailVerificationTokenEntity(String token, Long userId, Instant expiresAt, Instant usedAt) {
         this.token = token;
         this.userId = userId;
         this.expiresAt = expiresAt;

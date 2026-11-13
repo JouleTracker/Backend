@@ -8,6 +8,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
@@ -15,19 +17,16 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * JPA persistence entity mapped to the {@code users} table.
  *
  * <p>Extends {@link AuditablePersistenceEntity} to inherit auditing fields.
- * Manages identity using UUID mapped to MySQL {@code CHAR(36)}.</p>
+ * Manages identity using autoincremental {@code Long}.</p>
  */
 @Getter
 @Setter
@@ -44,9 +43,8 @@ import java.util.UUID;
 public class UserEntity extends AuditablePersistenceEntity {
 
     @Id
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "id", length = 36, nullable = false)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(nullable = false, length = 150)
     private String email;
@@ -82,7 +80,7 @@ public class UserEntity extends AuditablePersistenceEntity {
     }
 
     public UserEntity(
-            UUID id,
+            Long id,
             String email,
             String passwordHash,
             String firstName,
@@ -101,7 +99,7 @@ public class UserEntity extends AuditablePersistenceEntity {
     }
 
     public void addRole(RoleEntity role) {
-        UserRoleEntity userRole = new UserRoleEntity(UUID.randomUUID(), this, role, Instant.now());
+        UserRoleEntity userRole = new UserRoleEntity(null, this, role, Instant.now());
         this.userRoles.add(userRole);
     }
 

@@ -20,7 +20,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -30,7 +29,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("VerifyEmailUseCaseImpl Unit Tests")
 class VerifyEmailUseCaseImplTest {
 
-    private static final UUID TEST_USER_ID = UUID.fromString("67417618-dd5e-11f1-a688-50ebf6e6183d");
+    private static final Long TEST_USER_ID = 1L;
 
     @Mock
     private EmailVerificationTokenRepository tokenRepository;
