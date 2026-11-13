@@ -12,6 +12,7 @@ import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -42,6 +43,14 @@ public class UserRepositoryAdapter implements UserRepository {
             return Optional.empty();
         }
         return jpaRepository.findById(id.value()).map(mapper::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<User> findAll() {
+        return jpaRepository.findAll().stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 
     @Override

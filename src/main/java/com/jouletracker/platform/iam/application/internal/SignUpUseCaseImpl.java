@@ -35,7 +35,7 @@ public class SignUpUseCaseImpl implements SignUpUseCase {
     private static final Logger LOGGER = LoggerFactory.getLogger(SignUpUseCaseImpl.class);
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Pattern STRONG_PASSWORD = Pattern.compile(
-            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,64}$"
+            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9\\s])\\S{8,64}$"
     );
 
     private final UserRepository userRepository;

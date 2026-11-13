@@ -5,9 +5,14 @@ package com.jouletracker.platform.iam.domain.model.valueobjects;
  */
 public enum Role {
     /**
-     * Standard registered platform user.
+     * Standard registered residential / homeowner user.
      */
     ROLE_USER,
+
+    /**
+     * Registered MYPE / business account user.
+     */
+    ROLE_BUSINESS,
 
     /**
      * Platform administrator with elevated permissions.
@@ -15,16 +20,20 @@ public enum Role {
     ROLE_ADMIN;
 
     /**
-     * Converts the domain role into the database role representation ("USER", "ADMIN").
+     * Converts the domain role into the database role representation ("USER", "BUSINESS", "ADMIN").
      *
      * @return database role name
      */
     public String toDbName() {
-        return this == ROLE_ADMIN ? "ADMIN" : "USER";
+        return switch (this) {
+            case ROLE_ADMIN -> "ADMIN";
+            case ROLE_BUSINESS -> "BUSINESS";
+            case ROLE_USER -> "USER";
+        };
     }
 
     /**
-     * Parses a database role name ("USER", "ADMIN" or with "ROLE_" prefix) into a domain {@link Role}.
+     * Parses a database role name ("USER", "BUSINESS", "ADMIN" or with "ROLE_" prefix) into a domain {@link Role}.
      *
      * @param dbName database role string
      * @return corresponding Role enum constant
@@ -32,6 +41,9 @@ public enum Role {
     public static Role fromDbName(String dbName) {
         if ("ADMIN".equalsIgnoreCase(dbName) || "ROLE_ADMIN".equalsIgnoreCase(dbName)) {
             return ROLE_ADMIN;
+        }
+        if ("BUSINESS".equalsIgnoreCase(dbName) || "ROLE_BUSINESS".equalsIgnoreCase(dbName)) {
+            return ROLE_BUSINESS;
         }
         return ROLE_USER;
     }

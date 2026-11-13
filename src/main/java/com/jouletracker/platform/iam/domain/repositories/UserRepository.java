@@ -5,6 +5,7 @@ import com.jouletracker.platform.iam.domain.model.valueobjects.EmailAddress;
 import com.jouletracker.platform.iam.domain.model.valueobjects.UserId;
 import org.jspecify.annotations.NullMarked;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -22,6 +23,13 @@ public interface UserRepository {
      * @return an Optional containing the User if found, or empty otherwise
      */
     Optional<User> findById(UserId id);
+
+    /**
+     * Returns all registered users.
+     *
+     * @return list of all User aggregates
+     */
+    List<User> findAll();
 
     /**
      * Finds a user by their email address.
