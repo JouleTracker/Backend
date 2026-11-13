@@ -26,9 +26,16 @@ public enum ConsumptionPeriod {
         if (value == null || value.isBlank()) {
             return DAILY;
         }
-        return Arrays.stream(values())
-                .filter(p -> p.name().equalsIgnoreCase(value.trim()) || p.code.equalsIgnoreCase(value.trim()))
-                .findFirst()
-                .orElse(DAILY);
+        String normalized = value.trim().toLowerCase();
+        return switch (normalized) {
+            case "dia", "día" -> DAILY;
+            case "semana" -> WEEKLY;
+            case "mes" -> MONTHLY;
+            case "ano", "año" -> YEARLY;
+            default -> Arrays.stream(values())
+                    .filter(p -> p.name().equalsIgnoreCase(normalized) || p.code.equalsIgnoreCase(normalized))
+                    .findFirst()
+                    .orElse(DAILY);
+        };
     }
 }

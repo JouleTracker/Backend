@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,11 +49,11 @@ public class ComparativeConsumptionQueryServiceImpl implements ComparativeConsum
         for (int i = 0; i < buckets; i++) {
             final int bucketIndex = i;
             double currentKwh = round2(currentMeasurements.stream()
-                    .filter(m -> resolveBucket(m.getMeasuredAt(), period, buckets) == bucketIndex)
+                    .filter(m -> resolveBucket(m.getMeasuredAt(), currentStart, period, buckets) == bucketIndex)
                     .mapToDouble(EnergyMeasurement::getEnergyKwh)
                     .sum());
             double previousKwh = round2(previousMeasurements.stream()
-                    .filter(m -> resolveBucket(m.getMeasuredAt(), period, buckets) == bucketIndex)
+                    .filter(m -> resolveBucket(m.getMeasuredAt(), previousStart, period, buckets) == bucketIndex)
                     .mapToDouble(EnergyMeasurement::getEnergyKwh)
                     .sum());
 
@@ -71,11 +72,14 @@ public class ComparativeConsumptionQueryServiceImpl implements ComparativeConsum
         return result;
     }
 
-    private int resolveBucket(LocalDateTime dt, ConsumptionPeriod period, int buckets) {
+    private int resolveBucket(LocalDateTime dt, LocalDateTime periodStart, ConsumptionPeriod period, int buckets) {
         return switch (period) {
             case DAILY -> Math.min(buckets - 1, dt.getHour() / 4);
             case WEEKLY -> dt.getDayOfWeek().getValue() - 1;
-            case MONTHLY -> Math.min(buckets - 1, (dt.getDayOfMonth() - 1) / 8);
+            case MONTHLY -> {
+                long daysElapsed = Math.max(0, ChronoUnit.DAYS.between(periodStart, dt));
+                yield Math.min(buckets - 1, (int) (daysElapsed / 8));
+            }
             case YEARLY -> dt.getMonthValue() - 1;
         };
     }
