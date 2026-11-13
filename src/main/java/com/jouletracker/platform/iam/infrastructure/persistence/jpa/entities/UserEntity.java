@@ -1,7 +1,7 @@
 package com.jouletracker.platform.iam.infrastructure.persistence.jpa.entities;
 
 import com.jouletracker.platform.iam.domain.model.valueobjects.UserStatus;
-import com.jouletracker.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
+import com.jouletracker.platform.shared.infrastructure.persistence.jpa.entities.AuditablePersistenceEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,7 +26,7 @@ import java.util.UUID;
 /**
  * JPA persistence entity mapped to the {@code users} table.
  *
- * <p>Extends {@link AuditableAbstractPersistenceEntity} to inherit auditing fields.
+ * <p>Extends {@link AuditablePersistenceEntity} to inherit auditing fields.
  * Manages identity using UUID mapped to MySQL {@code CHAR(36)}.</p>
  */
 @Getter
@@ -41,7 +41,7 @@ import java.util.UUID;
                 @Index(name = "idx_users_email", columnList = "email")
         }
 )
-public class UserEntity extends AuditableAbstractPersistenceEntity {
+public class UserEntity extends AuditablePersistenceEntity {
 
     @Id
     @JdbcTypeCode(SqlTypes.CHAR)

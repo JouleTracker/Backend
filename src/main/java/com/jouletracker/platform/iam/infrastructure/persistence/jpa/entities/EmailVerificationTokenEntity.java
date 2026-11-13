@@ -1,6 +1,6 @@
 package com.jouletracker.platform.iam.infrastructure.persistence.jpa.entities;
 
-import com.jouletracker.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
+import com.jouletracker.platform.shared.infrastructure.persistence.jpa.entities.AuditablePersistenceEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -20,7 +20,7 @@ import java.util.UUID;
 /**
  * JPA persistence entity mapped to the database table storing single-use email verification tokens.
  *
- * <p>Extends {@link AuditableAbstractPersistenceEntity} to inherit auditing fields.
+ * <p>Extends {@link AuditablePersistenceEntity} to inherit auditing fields.
  * Preserves the autoincremental {@code Long} identifier for token primary key while referencing
  * the user by {@code UUID} mapped to {@code CHAR(36)}.</p>
  */
@@ -37,7 +37,7 @@ import java.util.UUID;
                 @Index(name = "idx_tokens_user_id", columnList = "user_id")
         }
 )
-public class EmailVerificationTokenEntity extends AuditableAbstractPersistenceEntity {
+public class EmailVerificationTokenEntity extends AuditablePersistenceEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
