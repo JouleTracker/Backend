@@ -98,8 +98,8 @@ public class SecurityConfiguration {
                                 "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
-                        // All other endpoints require authentication
-                        .anyRequest().authenticated()
+                        // All endpoints temporarily permitted until JWT enforcement is enabled across frontend/IoT
+                        .anyRequest().permitAll()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
