@@ -1,5 +1,6 @@
 package com.jouletracker.platform.devices.interfaces.acl;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -10,4 +11,7 @@ public interface DevicesContextFacade {
     boolean existsDeviceById(Long deviceId);
     boolean updateSensorTelemetry(Long sensorId, Double powerKw, Double addedKwh, String timestamp);
     Optional<Long> fetchAssignedDeviceIdBySensorId(Long sensorId);
+    List<DeviceTelemetrySnapshot> fetchDevicesByUserId(Long userId);
+    List<SensorThresholdSnapshot> fetchSensorThresholdsByUserId(Long userId);
+    Optional<SensorThresholdSnapshot> fetchSensorThresholdById(Long sensorId);
 }
