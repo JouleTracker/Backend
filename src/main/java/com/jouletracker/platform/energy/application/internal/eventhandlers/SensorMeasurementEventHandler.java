@@ -1,6 +1,7 @@
 package com.jouletracker.platform.energy.application.internal.eventhandlers;
 
 import com.jouletracker.platform.devices.domain.model.events.SensorRegisteredEvent;
+import com.jouletracker.platform.devices.interfaces.acl.DevicesContextFacade;
 import com.jouletracker.platform.energy.application.commandservices.EnergyMeasurementCommandService;
 import com.jouletracker.platform.energy.domain.model.commands.RegisterEnergyMeasurementCommand;
 import org.slf4j.Logger;
@@ -19,9 +20,12 @@ public class SensorMeasurementEventHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(SensorMeasurementEventHandler.class);
 
     private final EnergyMeasurementCommandService commandService;
+    private final DevicesContextFacade devicesContextFacade;
 
-    public SensorMeasurementEventHandler(EnergyMeasurementCommandService commandService) {
+    public SensorMeasurementEventHandler(EnergyMeasurementCommandService commandService,
+                                         DevicesContextFacade devicesContextFacade) {
         this.commandService = commandService;
+        this.devicesContextFacade = devicesContextFacade;
     }
 
     @EventListener
@@ -29,11 +33,12 @@ public class SensorMeasurementEventHandler {
         if (event == null || event.userId() == null) {
             return;
         }
+        Long deviceId = devicesContextFacade.fetchAssignedDeviceIdBySensorId(event.sensorId()).orElse(null);
         LOGGER.info("Initializing baseline energy measurement for registered sensor id={}", event.sensorId());
         var command = new RegisterEnergyMeasurementCommand(
                 event.userId(),
                 event.sensorId(),
-                event.deviceId(),
+                deviceId,
                 "Sensor IoT #" + event.sensorId(),
                 "Monitoreo IoT",
                 0.0,

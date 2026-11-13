@@ -4,7 +4,7 @@ import com.jouletracker.platform.energy.domain.model.aggregates.EnergyMeasuremen
 import com.jouletracker.platform.energy.domain.repositories.EnergyMeasurementRepository;
 import com.jouletracker.platform.energy.infrastructure.persistence.jpa.assemblers.EnergyMeasurementPersistenceAssembler;
 import com.jouletracker.platform.energy.infrastructure.persistence.jpa.repositories.EnergyMeasurementPersistenceRepository;
-import org.springframework.context.ApplicationEventPublisher;
+import com.jouletracker.platform.shared.infrastructure.events.DomainEventPublisher;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -15,12 +15,12 @@ import java.util.Optional;
 public class EnergyMeasurementRepositoryImpl implements EnergyMeasurementRepository {
 
     private final EnergyMeasurementPersistenceRepository persistenceRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final DomainEventPublisher domainEventPublisher;
 
     public EnergyMeasurementRepositoryImpl(EnergyMeasurementPersistenceRepository persistenceRepository,
-                                           ApplicationEventPublisher eventPublisher) {
+                                           DomainEventPublisher domainEventPublisher) {
         this.persistenceRepository = persistenceRepository;
-        this.eventPublisher = eventPublisher;
+        this.domainEventPublisher = domainEventPublisher;
     }
 
     @Override
@@ -29,8 +29,7 @@ public class EnergyMeasurementRepositoryImpl implements EnergyMeasurementReposit
         var savedEntity = persistenceRepository.save(entity);
         var savedMeasurement = EnergyMeasurementPersistenceAssembler.toDomainFromPersistence(savedEntity);
 
-        measurement.domainEvents().forEach(eventPublisher::publishEvent);
-        measurement.clearDomainEvents();
+        domainEventPublisher.publishAndClearEvents(measurement);
 
         return savedMeasurement;
     }
