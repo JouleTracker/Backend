@@ -24,8 +24,8 @@ import com.jouletracker.platform.iam.domain.model.valueobjects.UserId;
 import com.jouletracker.platform.iam.domain.model.valueobjects.UserStatus;
 import com.jouletracker.platform.iam.domain.repositories.UserRepository;
 import com.jouletracker.platform.iam.domain.services.PasswordHashingService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -41,7 +41,7 @@ import java.util.Set;
  * for local development when the database has no user/device data yet.
  */
 @Component
-@Profile("dev")
+@ConditionalOnProperty(name = "app.seed-demo-data", havingValue = "true")
 public class DemoDataSeeder {
 
     private final UserRepository userRepository;
