@@ -15,4 +15,5 @@ public interface EnergyMeasurementRepository {
     List<EnergyMeasurement> findAllByUserId(Long userId);
     List<EnergyMeasurement> findAllByUserIdAndMeasuredAtBetween(Long userId, LocalDateTime start, LocalDateTime end);
     List<EnergyMeasurement> findAllByUserIdAndDeviceIdAndMeasuredAtBetween(Long userId, Long deviceId, LocalDateTime start, LocalDateTime end);
+    Optional<EnergyMeasurement> findTopBySensorIdOrderByMeasuredAtDesc(Long sensorId);
 }

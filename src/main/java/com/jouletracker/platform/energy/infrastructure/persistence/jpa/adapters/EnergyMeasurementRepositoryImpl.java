@@ -60,4 +60,10 @@ public class EnergyMeasurementRepositoryImpl implements EnergyMeasurementReposit
                 .map(EnergyMeasurementPersistenceAssembler::toDomainFromPersistence)
                 .toList();
     }
+
+    @Override
+    public Optional<EnergyMeasurement> findTopBySensorIdOrderByMeasuredAtDesc(Long sensorId) {
+        return persistenceRepository.findTopBySensorIdOrderByMeasuredAtDesc(sensorId)
+                .map(EnergyMeasurementPersistenceAssembler::toDomainFromPersistence);
+    }
 }

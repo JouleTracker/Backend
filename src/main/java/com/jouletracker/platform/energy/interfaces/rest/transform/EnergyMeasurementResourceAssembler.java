@@ -128,4 +128,44 @@ public final class EnergyMeasurementResourceAssembler {
                 LocalDateTime.now()
         );
     }
+
+    public static TelemetryReadingResource toTelemetryResourceFromAggregate(EnergyMeasurement measurement) {
+        if (measurement == null) {
+            return null;
+        }
+        return new TelemetryReadingResource(
+                measurement.getId(),
+                measurement.getUserId(),
+                measurement.getSensorId(),
+                measurement.getDeviceId(),
+                measurement.getDeviceName(),
+                measurement.getDeviceCategory(),
+                measurement.getPowerKw(),
+                measurement.getEnergyKwh(),
+                measurement.getVoltage(),
+                measurement.getCurrentAmps(),
+                measurement.getCost(),
+                measurement.getMeasuredAt()
+        );
+    }
+
+    public static RegisterEnergyMeasurementCommand toCommandFromTelemetryResource(
+            RegisterTelemetryReadingResource resource, Long queryUserId) {
+        Long resolvedUserId = queryUserId != null ? queryUserId : (resource.userId() != null ? resource.userId() : 1L);
+        Double resolvedEnergyKwh = resource.energyKwh() != null
+                ? resource.energyKwh()
+                : (resource.kwh() != null ? resource.kwh() : 0.0);
+        return new RegisterEnergyMeasurementCommand(
+                resolvedUserId,
+                resource.sensorId(),
+                resource.deviceId(),
+                resource.deviceName(),
+                resource.deviceCategory(),
+                resource.powerKw() != null ? resource.powerKw() : 0.0,
+                resolvedEnergyKwh,
+                resource.voltage(),
+                resource.currentAmps(),
+                resource.measuredAt() != null ? resource.measuredAt() : LocalDateTime.now()
+        );
+    }
 }
