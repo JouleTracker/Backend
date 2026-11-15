@@ -61,14 +61,14 @@ public class OpenApiConfiguration {
         // Add server configurations
         openApi.servers(List.of(
                 new Server()
+                        .url("/")
+                        .description("Current Server"),
+                new Server()
+                        .url("https://jouletracker-api-kmok.onrender.com")
+                        .description("Render Production Environment"),
+                new Server()
                         .url("http://localhost:8080")
-                        .description("Local Development Environment"),
-                new Server()
-                        .url("https://staging-api.jouletracker.com")
-                        .description("Staging Environment"),
-                new Server()
-                        .url("https://api.jouletracker.com")
-                        .description("Production Environment")
+                        .description("Local Development Environment")
         ));
 
         // Add a security scheme
