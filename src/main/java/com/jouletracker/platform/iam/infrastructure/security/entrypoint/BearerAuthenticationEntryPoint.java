@@ -38,9 +38,7 @@ public class BearerAuthenticationEntryPoint implements AuthenticationEntryPoint 
             HttpServletResponse response,
             AuthenticationException authException) throws IOException {
         var applicationError = ApplicationError.unauthorized(
-                authException.getMessage() != null
-                        ? authException.getMessage()
-                        : "Full authentication is required to access this resource"
+                "Se requiere autenticación para acceder a este recurso"
         );
 
         var problemDetail = ProblemDetailFromApplicationErrorAssembler

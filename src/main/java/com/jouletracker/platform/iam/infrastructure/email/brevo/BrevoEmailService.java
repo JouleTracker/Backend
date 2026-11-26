@@ -2,22 +2,27 @@ package com.jouletracker.platform.iam.infrastructure.email.brevo;
 
 import com.jouletracker.platform.iam.domain.model.valueobjects.EmailAddress;
 import com.jouletracker.platform.iam.domain.services.EmailService;
+import com.jouletracker.platform.iam.infrastructure.configuration.PasswordResetTokenProperties;
 import com.jouletracker.platform.iam.infrastructure.configuration.VerificationTokenProperties;
 import com.jouletracker.platform.iam.infrastructure.email.brevo.client.BrevoRestClient;
 import com.jouletracker.platform.iam.infrastructure.email.brevo.client.BrevoSendSmtpEmailRequest;
 import com.jouletracker.platform.shared.infrastructure.configuration.ApplicationProperties;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Year;
 import java.util.List;
 
 /**
  * Adapter implementing {@link EmailService} using Brevo's transactional email API.
  *
- * <p>Network or configuration failures are logged and handled gracefully so user
- * registration is not blocked when Brevo is unavailable or unconfigured (TS-19).</p>
+ * <p>Delivery errors are logged with non-sensitive diagnostics and propagated to the calling
+ * application use case so workflows are not falsely reported as successful when Brevo rejects
+ * or cannot receive a request.</p>
  */
 @Service
 @NullMarked
@@ -29,27 +34,40 @@ public class BrevoEmailService implements EmailService {
     private final BrevoProperties properties;
     private final ApplicationProperties applicationProperties;
     private final VerificationTokenProperties verificationTokenProperties;
+    private final PasswordResetTokenProperties passwordResetTokenProperties;
+
+    @Autowired
+    public BrevoEmailService(
+            BrevoRestClient brevoRestClient,
+            BrevoProperties properties,
+            ApplicationProperties applicationProperties,
+            VerificationTokenProperties verificationTokenProperties,
+            PasswordResetTokenProperties passwordResetTokenProperties) {
+        this.brevoRestClient = brevoRestClient;
+        this.properties = properties;
+        this.applicationProperties = applicationProperties;
+        this.verificationTokenProperties = verificationTokenProperties;
+        this.passwordResetTokenProperties = passwordResetTokenProperties;
+    }
 
     public BrevoEmailService(
             BrevoRestClient brevoRestClient,
             BrevoProperties properties,
             ApplicationProperties applicationProperties,
             VerificationTokenProperties verificationTokenProperties) {
-        this.brevoRestClient = brevoRestClient;
-        this.properties = properties;
-        this.applicationProperties = applicationProperties;
-        this.verificationTokenProperties = verificationTokenProperties;
+        this(
+                brevoRestClient,
+                properties,
+                applicationProperties,
+                verificationTokenProperties,
+                new PasswordResetTokenProperties()
+        );
     }
 
     @Override
     public void sendVerificationEmail(EmailAddress recipient, String recipientName, String verificationToken) {
-        String verificationUrl = buildVerificationUrl(verificationToken);
-
-        if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
-            LOGGER.warn("Brevo API key is not configured. Skipping email delivery. Verification URL for {}: {}",
-                    recipient.value(), verificationUrl);
-            return;
-        }
+        String verificationUrl = applicationProperties.buildEmailVerificationUrl(verificationToken);
+        String greetingName = formatGreetingName(recipientName);
 
         var sender = new BrevoSendSmtpEmailRequest.Sender(
                 properties.getSenderName(),
@@ -58,30 +76,123 @@ public class BrevoEmailService implements EmailService {
 
         var to = List.of(new BrevoSendSmtpEmailRequest.Recipient(
                 recipient.value(),
-                recipientName
+                greetingName
         ));
 
         String subject = "Confirm your JouleTracker account";
-        String htmlContent = buildHtmlContent(recipientName, verificationUrl);
+        String htmlContent = buildVerificationHtmlContent(greetingName, verificationUrl);
 
         var request = new BrevoSendSmtpEmailRequest(sender, to, subject, htmlContent);
 
+        dispatchEmail("verificación de cuenta", recipient, request);
+    }
+
+    @Override
+    public void sendPasswordResetEmail(EmailAddress recipient, String recipientName, String resetToken) {
+        String resetUrl = applicationProperties.buildPasswordResetUrl(resetToken);
+        String greetingName = formatGreetingName(recipientName);
+
+        var sender = new BrevoSendSmtpEmailRequest.Sender(
+                properties.getSenderName(),
+                properties.getSenderEmail()
+        );
+
+        var to = List.of(new BrevoSendSmtpEmailRequest.Recipient(
+                recipient.value(),
+                greetingName
+        ));
+
+        String subject = "Reset your JouleTracker password";
+        String htmlContent = buildPasswordResetHtmlContent(greetingName, resetUrl);
+
+        var request = new BrevoSendSmtpEmailRequest(sender, to, subject, htmlContent);
+
+        dispatchEmail("recuperación de contraseña", recipient, request);
+    }
+
+    static String formatGreetingName(@Nullable String recipientName) {
+        if (recipientName == null || recipientName.isBlank()) {
+            return "";
+        }
+        String[] tokens = recipientName.trim().split("\\s+");
+        if (tokens.length % 2 == 0) {
+            int half = tokens.length / 2;
+            String firstHalf = String.join(" ", java.util.Arrays.copyOfRange(tokens, 0, half));
+            String secondHalf = String.join(" ", java.util.Arrays.copyOfRange(tokens, half, tokens.length));
+            if (firstHalf.equalsIgnoreCase(secondHalf)) {
+                return firstHalf;
+            }
+        }
+        return String.join(" ", tokens);
+    }
+
+    static String formatGreetingName(@Nullable String firstName, @Nullable String lastName) {
+        String cleanFirst = firstName == null ? "" : firstName.trim();
+        String cleanLast = lastName == null ? "" : lastName.trim();
+        if (cleanFirst.isEmpty()) {
+            return formatGreetingName(cleanLast);
+        }
+        if (cleanLast.isEmpty() || cleanFirst.equalsIgnoreCase(cleanLast)) {
+            return cleanFirst;
+        }
+        return cleanFirst + " " + cleanLast;
+    }
+
+    private void dispatchEmail(String emailType, EmailAddress recipient, BrevoSendSmtpEmailRequest request) {
+        String maskedRecipient = maskEmail(recipient.value());
+        String senderEmail = properties.getSenderEmail();
+        String apiUrl = properties.getApiUrl();
+
+        if (properties.hasMissingApiKey()) {
+            LOGGER.error(
+                    "No se puede enviar correo de {} vía Brevo: BREVO_API_KEY no está configurada o está vacía (destinatario={}, remitente={}, endpoint={}).",
+                    emailType, maskedRecipient, senderEmail, apiUrl
+            );
+        } else if (properties.hasPlaceholderApiKey()) {
+            LOGGER.warn(
+                    "BREVO_API_KEY parece contener un valor de marcador de posición (placeholder); la API de Brevo probablemente rechazará el envío de {} con HTTP 401 (destinatario={}, remitente={}, endpoint={}).",
+                    emailType, maskedRecipient, senderEmail, apiUrl
+            );
+        }
+
+        if (senderEmail == null || senderEmail.isBlank()) {
+            LOGGER.warn(
+                    "BREVO_SENDER_EMAIL está vacía al intentar enviar correo de {} (destinatario={}, endpoint={}).",
+                    emailType, maskedRecipient, apiUrl
+            );
+        }
+
+        LOGGER.info(
+                "Iniciando envío de correo de {} vía Brevo (destinatario={}, remitente={}, endpoint={}).",
+                emailType, maskedRecipient, senderEmail, apiUrl
+        );
+
         try {
             brevoRestClient.sendTransactionalEmail(request);
-            LOGGER.info("Verification email accepted by Brevo.");
-        } catch (Exception ex) {
-            LOGGER.error("Failed to send verification email via Brevo for {}. Registration will proceed. Fallback verification URL: {}",
-                    recipient.value(), verificationUrl, ex);
+            LOGGER.info(
+                    "Correo de {} aceptado por Brevo (destinatario={}, remitente={}).",
+                    emailType, maskedRecipient, senderEmail
+            );
+        } catch (RuntimeException ex) {
+            LOGGER.error(
+                    "Fallo al enviar correo de {} vía Brevo (destinatario={}, remitente={}, endpoint={}): {}",
+                    emailType, maskedRecipient, senderEmail, apiUrl, ex.getMessage()
+            );
+            throw ex;
         }
     }
 
-    private String buildVerificationUrl(String token) {
-        String base = applicationProperties.getEmailVerificationUrl();
-        String separator = base.contains("?") ? "&" : "?";
-        return base + separator + "token=" + token;
+    static String maskEmail(String email) {
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 0 || atIndex == email.length() - 1) {
+            return "***";
+        }
+        String local = email.substring(0, atIndex);
+        String domain = email.substring(atIndex);
+        return local.charAt(0) + "***" + domain;
     }
 
-    private String buildHtmlContent(String recipientName, String verificationUrl) {
+    private String buildVerificationHtmlContent(String recipientName, String verificationUrl) {
         return """
                 <!DOCTYPE html>
                 <html>
@@ -119,6 +230,57 @@ public class BrevoEmailService implements EmailService {
                     </div>
                 </body>
                 </html>
-                """.formatted(recipientName, verificationUrl, verificationTokenProperties.getValidityHours(), String.valueOf(java.time.Year.now().getValue()));
+                """.formatted(
+                recipientName,
+                verificationUrl,
+                verificationTokenProperties.getValidityHours(),
+                String.valueOf(Year.now().getValue())
+        );
+    }
+
+    private String buildPasswordResetHtmlContent(String recipientName, String resetUrl) {
+        return """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Reset Your JouleTracker Password</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 24px; }
+                        .container { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+                        .header { text-align: center; margin-bottom: 24px; }
+                        .title { color: #1a202c; font-size: 22px; font-weight: 700; }
+                        .content { color: #4a5568; line-height: 1.6; font-size: 15px; }
+                        .button-container { text-align: center; margin: 32px 0; }
+                        .button { background-color: #0284c7; color: #ffffff !important; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block; }
+                        .footer { margin-top: 32px; font-size: 13px; color: #718096; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1 class="title">Password Recovery Request</h1>
+                        </div>
+                        <div class="content">
+                            <p>Hello <strong>%s</strong>,</p>
+                            <p>We received a request to reset the password for your JouleTracker account. Click the button below to choose a new password:</p>
+                            <div class="button-container">
+                                <a href="%s" class="button" target="_blank">Reset Password</a>
+                            </div>
+                            <p>This password recovery link is single-use and will expire in <strong>%d minutes</strong>.</p>
+                            <p>If you did not request a password reset, you can safely ignore this email and your password will remain unchanged.</p>
+                        </div>
+                        <div class="footer">
+                            <p>&copy; %s JouleTracker Platform. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """.formatted(
+                recipientName,
+                resetUrl,
+                passwordResetTokenProperties.getValidityMinutes(),
+                String.valueOf(Year.now().getValue())
+        );
     }
 }

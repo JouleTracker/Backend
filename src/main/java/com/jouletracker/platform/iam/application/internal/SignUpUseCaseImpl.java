@@ -14,16 +14,17 @@ import com.jouletracker.platform.iam.domain.services.PasswordHashingService;
 import com.jouletracker.platform.iam.infrastructure.configuration.VerificationTokenProperties;
 import com.jouletracker.platform.shared.application.result.ApplicationError;
 import com.jouletracker.platform.shared.application.result.Result;
+import com.jouletracker.platform.shared.domain.model.valueobjects.PasswordPolicy;
 import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 /**
  * Implementation of the {@link SignUpUseCase} orchestrating user registration.
@@ -34,9 +35,6 @@ public class SignUpUseCaseImpl implements SignUpUseCase {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignUpUseCaseImpl.class);
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-    private static final Pattern STRONG_PASSWORD = Pattern.compile(
-            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9\\s])\\S{8,64}$"
-    );
 
     private final UserRepository userRepository;
     private final PasswordHashingService passwordHashingService;
@@ -44,7 +42,7 @@ public class SignUpUseCaseImpl implements SignUpUseCase {
     private final EmailService emailService;
     private final VerificationTokenProperties verificationTokenProperties;
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     public SignUpUseCaseImpl(
             UserRepository userRepository,
             PasswordHashingService passwordHashingService,
@@ -55,7 +53,10 @@ public class SignUpUseCaseImpl implements SignUpUseCase {
         this.passwordHashingService = passwordHashingService;
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
         this.emailService = emailService;
-        this.verificationTokenProperties = Objects.requireNonNull(verificationTokenProperties, "VerificationTokenProperties must not be null");
+        this.verificationTokenProperties = Objects.requireNonNull(
+                verificationTokenProperties,
+                "VerificationTokenProperties must not be null"
+        );
     }
 
     public SignUpUseCaseImpl(
@@ -78,13 +79,11 @@ public class SignUpUseCaseImpl implements SignUpUseCase {
 
         if (userRepository.existsByEmail(emailAddress)) {
             LOGGER.info("Registration attempt rejected: email address is already in use.");
-            return Result.failure(ApplicationError.conflict("User", "Email address is already in use"));
+            return Result.failure(ApplicationError.conflict("User", "El correo electrónico ya está en uso"));
         }
 
-        if (command.rawPassword() == null || !STRONG_PASSWORD.matcher(command.rawPassword()).matches()) {
-            return Result.failure(ApplicationError.validationError(
-                    "password", "Password must be 8-64 characters and include uppercase, lowercase, digit, and special character"
-            ));
+        if (!PasswordPolicy.isSatisfiedBy(command.rawPassword())) {
+            return Result.failure(ApplicationError.validationError("password", PasswordPolicy.POLICY_MESSAGE));
         }
 
         PasswordHash passwordHash = passwordHashingService.hash(command.rawPassword());

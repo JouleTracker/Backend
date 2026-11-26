@@ -1,5 +1,6 @@
 package com.jouletracker.platform.iam.infrastructure.security.configuration;
 
+import com.jouletracker.platform.iam.infrastructure.security.entrypoint.BearerAccessDeniedHandler;
 import com.jouletracker.platform.iam.infrastructure.security.entrypoint.BearerAuthenticationEntryPoint;
 import com.jouletracker.platform.iam.infrastructure.security.filter.JwtAuthenticationFilter;
 import com.jouletracker.platform.shared.infrastructure.configuration.ApplicationProperties;
@@ -9,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -28,23 +30,27 @@ import java.util.List;
  * Security configuration for the JouleTracker Platform.
  *
  * <p>Configures stateless JWT-based authentication, BCrypt password hashing,
- * restricted CORS policy, and role-based request authorization.</p>
+ * restricted CORS policy, method-level security, and role-based request authorization.</p>
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @NullMarked
 public class SecurityConfiguration {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final BearerAuthenticationEntryPoint authenticationEntryPoint;
+    private final BearerAccessDeniedHandler accessDeniedHandler;
     private final ApplicationProperties applicationProperties;
 
     public SecurityConfiguration(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             BearerAuthenticationEntryPoint authenticationEntryPoint,
+            BearerAccessDeniedHandler accessDeniedHandler,
             ApplicationProperties applicationProperties) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.authenticationEntryPoint = authenticationEntryPoint;
+        this.accessDeniedHandler = accessDeniedHandler;
         this.applicationProperties = applicationProperties;
     }
 
@@ -85,12 +91,18 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
+                )
                 .authorizeHttpRequests(auth -> auth
-                        // Public authentication endpoints
+                        // Public IAM authentication, verification, and password recovery endpoints
                         .requestMatchers(HttpMethod.POST, "/api/v1/authentication/sign-up").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/authentication/sign-in").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/authentication/verify-email").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/authentication/resend-verification").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/authentication/forgot-password").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/authentication/reset-password").permitAll()
                         // Public API documentation
                         .requestMatchers(
                                 "/v3/api-docs/**",
@@ -99,7 +111,12 @@ public class SecurityConfiguration {
                                 "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
-                        // All endpoints temporarily permitted until JWT enforcement is enabled across frontend/IoT
+                        // Authenticated user self-service endpoints (US-25, US-40)
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/users/*/password").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/users/*/deactivate").authenticated()
+                        // Administrative moderation endpoints (US-49)
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/users/*/status").hasRole("ADMIN")
+                        // All other endpoints temporarily permitted until JWT enforcement is enabled across frontend/IoT
                         .anyRequest().permitAll()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
