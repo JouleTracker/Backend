@@ -1,6 +1,8 @@
 package com.jouletracker.platform.iam.domain.model.aggregates;
 
+import com.jouletracker.platform.iam.domain.model.events.UserDeactivatedEvent;
 import com.jouletracker.platform.iam.domain.model.events.UserRegisteredEvent;
+import com.jouletracker.platform.iam.domain.model.events.UserStatusChangedEvent;
 import com.jouletracker.platform.iam.domain.model.events.UserVerifiedEvent;
 import com.jouletracker.platform.iam.domain.model.valueobjects.EmailAddress;
 import com.jouletracker.platform.iam.domain.model.valueobjects.PasswordHash;
@@ -10,6 +12,7 @@ import com.jouletracker.platform.iam.domain.model.valueobjects.UserStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 
@@ -56,6 +59,7 @@ class UserTest {
 
         assertThat(user.isEmailVerified()).isTrue();
         assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(user.canAuthenticate()).isTrue();
         assertThat(user.domainEvents())
                 .hasSize(1)
                 .first()
@@ -92,5 +96,64 @@ class UserTest {
         UUID secondId = UUID.randomUUID();
         assertThatThrownBy(() -> user.assignId(UserId.of(secondId)))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("Should soft-deactivate active user, record timestamp, block authentication, and raise event")
+    void shouldDeactivateUserViaDomainBehavior() {
+        var user = new User(
+                UserId.of(TEST_USER_ID),
+                EmailAddress.of("active@jouletracker.com"),
+                PasswordHash.of("$2a$12$hash"),
+                "Jane",
+                "Doe",
+                UserStatus.ACTIVE,
+                true,
+                Set.of(Role.ROLE_USER)
+        );
+        Instant now = Instant.now();
+
+        user.deactivate(now);
+
+        assertThat(user.getStatus()).isEqualTo(UserStatus.INACTIVE);
+        assertThat(user.getDeactivatedAt()).isEqualTo(now);
+        assertThat(user.isDeactivated()).isTrue();
+        assertThat(user.canAuthenticate()).isFalse();
+        assertThat(user.domainEvents())
+                .hasSize(1)
+                .first()
+                .isInstanceOf(UserDeactivatedEvent.class);
+    }
+
+    @Test
+    @DisplayName("Should ban and reactivate user via domain moderation status transition")
+    void shouldUpdateModerationStatusViaDomainBehavior() {
+        var user = new User(
+                UserId.of(TEST_USER_ID),
+                EmailAddress.of("member@jouletracker.com"),
+                PasswordHash.of("$2a$12$hash"),
+                "Jane",
+                "Doe",
+                UserStatus.ACTIVE,
+                true,
+                Set.of(Role.ROLE_USER)
+        );
+        Instant now = Instant.now();
+
+        user.updateStatus(UserStatus.BANNED, now);
+
+        assertThat(user.getStatus()).isEqualTo(UserStatus.BANNED);
+        assertThat(user.isRestricted()).isTrue();
+        assertThat(user.canAuthenticate()).isFalse();
+        assertThat(user.domainEvents())
+                .hasSize(1)
+                .first()
+                .isInstanceOf(UserStatusChangedEvent.class);
+
+        user.clearDomainEvents();
+        user.updateStatus(UserStatus.ACTIVE, now.plusSeconds(60));
+        assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(user.getDeactivatedAt()).isNull();
+        assertThat(user.canAuthenticate()).isTrue();
     }
 }

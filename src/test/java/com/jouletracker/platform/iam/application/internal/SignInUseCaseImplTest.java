@@ -6,6 +6,7 @@ import com.jouletracker.platform.iam.domain.model.valueobjects.EmailAddress;
 import com.jouletracker.platform.iam.domain.model.valueobjects.PasswordHash;
 import com.jouletracker.platform.iam.domain.model.valueobjects.Role;
 import com.jouletracker.platform.iam.domain.model.valueobjects.UserId;
+import com.jouletracker.platform.iam.domain.model.valueobjects.UserStatus;
 import com.jouletracker.platform.iam.domain.repositories.UserRepository;
 import com.jouletracker.platform.iam.domain.services.PasswordHashingService;
 import com.jouletracker.platform.iam.domain.services.TokenService;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -52,7 +54,7 @@ class SignInUseCaseImplTest {
     }
 
     @Test
-    @DisplayName("Should authenticate verified user and return JWT")
+    @DisplayName("Should authenticate verified active user and return JWT")
     void shouldAuthenticateVerifiedUser() {
         var command = new SignInCommand("john.doe@jouletracker.com", "SecurePass123!");
         var user = new User(
@@ -128,6 +130,56 @@ class SignInUseCaseImplTest {
                 "Doe",
                 Set.of(Role.ROLE_USER),
                 false
+        );
+
+        when(userRepository.findByEmail(any())).thenReturn(Optional.of(user));
+        when(passwordHashingService.matches("SecurePass123!", user.getPasswordHash())).thenReturn(true);
+
+        var result = signInUseCase.handle(command);
+
+        assertThat(result.isFailure()).isTrue();
+        verify(tokenService, never()).generateToken(any());
+    }
+
+    @Test
+    @DisplayName("Should block authentication when account is soft-deactivated (US-40)")
+    void shouldBlockWhenAccountIsDeactivated() {
+        var command = new SignInCommand("john.doe@jouletracker.com", "SecurePass123!");
+        var user = new User(
+                UserId.of(TEST_USER_ID),
+                EmailAddress.of("john.doe@jouletracker.com"),
+                PasswordHash.of("$2a$12$hashed"),
+                "John",
+                "Doe",
+                UserStatus.INACTIVE,
+                true,
+                Instant.now(),
+                Set.of(Role.ROLE_USER)
+        );
+
+        when(userRepository.findByEmail(any())).thenReturn(Optional.of(user));
+        when(passwordHashingService.matches("SecurePass123!", user.getPasswordHash())).thenReturn(true);
+
+        var result = signInUseCase.handle(command);
+
+        assertThat(result.isFailure()).isTrue();
+        verify(tokenService, never()).generateToken(any());
+    }
+
+    @Test
+    @DisplayName("Should block authentication when account is banned (US-49)")
+    void shouldBlockWhenAccountIsBanned() {
+        var command = new SignInCommand("john.doe@jouletracker.com", "SecurePass123!");
+        var user = new User(
+                UserId.of(TEST_USER_ID),
+                EmailAddress.of("john.doe@jouletracker.com"),
+                PasswordHash.of("$2a$12$hashed"),
+                "John",
+                "Doe",
+                UserStatus.BANNED,
+                true,
+                null,
+                Set.of(Role.ROLE_USER)
         );
 
         when(userRepository.findByEmail(any())).thenReturn(Optional.of(user));

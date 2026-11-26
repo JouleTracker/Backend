@@ -3,10 +3,16 @@ package com.jouletracker.platform.iam.interfaces.rest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jouletracker.platform.iam.application.out.AuthenticatedUserResult;
 import com.jouletracker.platform.iam.application.out.UserResult;
+import com.jouletracker.platform.iam.application.usecases.ForgotPasswordUseCase;
+import com.jouletracker.platform.iam.application.usecases.ResendVerificationUseCase;
+import com.jouletracker.platform.iam.application.usecases.ResetPasswordUseCase;
 import com.jouletracker.platform.iam.application.usecases.SignInUseCase;
 import com.jouletracker.platform.iam.application.usecases.SignUpUseCase;
 import com.jouletracker.platform.iam.application.usecases.VerifyEmailUseCase;
 import com.jouletracker.platform.iam.domain.model.valueobjects.Role;
+import com.jouletracker.platform.iam.interfaces.rest.resources.ForgotPasswordRequest;
+import com.jouletracker.platform.iam.interfaces.rest.resources.ResendVerificationRequest;
+import com.jouletracker.platform.iam.interfaces.rest.resources.ResetPasswordRequest;
 import com.jouletracker.platform.iam.interfaces.rest.resources.SignInRequest;
 import com.jouletracker.platform.iam.interfaces.rest.resources.SignUpRequest;
 import com.jouletracker.platform.shared.application.result.ApplicationError;
@@ -50,10 +56,26 @@ class AuthenticationControllerTest {
     @Mock
     private VerifyEmailUseCase verifyEmailUseCase;
 
+    @Mock
+    private ResendVerificationUseCase resendVerificationUseCase;
+
+    @Mock
+    private ForgotPasswordUseCase forgotPasswordUseCase;
+
+    @Mock
+    private ResetPasswordUseCase resetPasswordUseCase;
+
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        var controller = new AuthenticationController(signUpUseCase, signInUseCase, verifyEmailUseCase);
+        var controller = new AuthenticationController(
+                signUpUseCase,
+                signInUseCase,
+                verifyEmailUseCase,
+                resendVerificationUseCase,
+                forgotPasswordUseCase,
+                resetPasswordUseCase
+        );
         mockMvc = MockMvcBuilders
                 .standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -132,5 +154,88 @@ class AuthenticationControllerTest {
                         .param("token", "valid-verification-token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.emailVerified").value(true));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/authentication/resend-verification should return 200 OK on valid unverified account")
+    void shouldReturnOkOnResendVerification() throws Exception {
+        var request = new ResendVerificationRequest("john.doe@jouletracker.com");
+        when(resendVerificationUseCase.handle(any())).thenReturn(Result.success("Verification email has been resent successfully."));
+
+        mockMvc.perform(post("/api/v1/authentication/resend-verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Verification email has been resent successfully."));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/authentication/resend-verification should return 409 Conflict when already verified")
+    void shouldReturnConflictWhenAlreadyVerified() throws Exception {
+        var request = new ResendVerificationRequest("john.doe@jouletracker.com");
+        when(resendVerificationUseCase.handle(any())).thenReturn(
+                Result.failure(ApplicationError.conflict("EmailVerification", "Account email address is already verified"))
+        );
+
+        mockMvc.perform(post("/api/v1/authentication/resend-verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Resource Conflict"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/authentication/forgot-password should return 200 OK on valid email")
+    void shouldReturnOkOnForgotPassword() throws Exception {
+        var request = new ForgotPasswordRequest("john.doe@jouletracker.com");
+        when(forgotPasswordUseCase.handle(any())).thenReturn(
+                Result.success("If an account exists for the provided email address, a password recovery link has been sent.")
+        );
+
+        mockMvc.perform(post("/api/v1/authentication/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/authentication/forgot-password should return 400 Bad Request on malformed email")
+    void shouldReturnBadRequestOnForgotPasswordInvalidEmail() throws Exception {
+        var request = new ForgotPasswordRequest("not-an-email");
+
+        mockMvc.perform(post("/api/v1/authentication/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation Error"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/authentication/reset-password should return 200 OK on valid token and password")
+    void shouldReturnOkOnResetPassword() throws Exception {
+        var request = new ResetPasswordRequest("valid-reset-token", "NewSecurePass123!");
+        when(resetPasswordUseCase.handle(any())).thenReturn(Result.success("Password has been reset successfully."));
+
+        mockMvc.perform(post("/api/v1/authentication/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Password has been reset successfully."));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/authentication/reset-password should return 422 on expired token")
+    void shouldReturnUnprocessableEntityOnExpiredResetToken() throws Exception {
+        var request = new ResetPasswordRequest("expired-reset-token", "NewSecurePass123!");
+        when(resetPasswordUseCase.handle(any())).thenReturn(
+                Result.failure(ApplicationError.businessRuleViolation("PASSWORD_RESET_TOKEN_EXPIRED", "Token expired"))
+        );
+
+        mockMvc.perform(post("/api/v1/authentication/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.title").value("Business Rule Violation"));
     }
 }
