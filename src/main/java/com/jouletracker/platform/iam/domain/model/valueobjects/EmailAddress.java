@@ -27,13 +27,13 @@ public record EmailAddress(String value) {
      * @throws IllegalArgumentException if email is null, blank, or malformed
      */
     public EmailAddress {
-        Objects.requireNonNull(value, "Email address must not be null");
+        Objects.requireNonNull(value, "El correo electrónico no puede ser nulo");
         String trimmed = value.trim();
         if (trimmed.isBlank()) {
-            throw new IllegalArgumentException("Email address must not be blank");
+            throw new IllegalArgumentException("El correo electrónico no puede estar vacío");
         }
         if (!EMAIL_PATTERN.matcher(trimmed).matches()) {
-            throw new IllegalArgumentException("Invalid email address format: " + trimmed);
+            throw new IllegalArgumentException("Formato de correo electrónico inválido: " + trimmed);
         }
         value = trimmed.toLowerCase(Locale.ROOT);
     }

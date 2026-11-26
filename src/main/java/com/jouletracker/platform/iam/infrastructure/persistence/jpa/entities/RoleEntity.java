@@ -15,7 +15,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 /**
- * JPA persistence entity mapped to the {@code roles} table in MySQL.
+ * JPA persistence entity mapped to the {@code roles} table in PostgreSQL.
  */
 @Getter
 @Setter

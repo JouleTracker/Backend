@@ -19,7 +19,8 @@ import java.io.IOException;
 /**
  * Filter that intercepts incoming HTTP requests to validate JWT access tokens in the Authorization header.
  *
- * <p>Populates Spring Security's {@link org.springframework.security.core.context.SecurityContext} when a valid token is provided.</p>
+ * <p>Reloads live account state on each request and refuses to authenticate soft-deactivated,
+ * suspended, banned, or unverified accounts even if their JWT has not yet expired.</p>
  */
 @Component
 @NullMarked
@@ -51,13 +52,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String username = tokenService.extractUsername(token);
                 try {
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                    var authentication = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                    );
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    if (userDetails.isEnabled() && userDetails.isAccountNonLocked()) {
+                        var authentication = new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    } else {
+                        logger.debug("JWT rejected: user account is inactive, unverified, suspended, or banned.");
+                    }
                 } catch (Exception ex) {
                     logger.debug("Failed to authenticate user from JWT.");
                 }

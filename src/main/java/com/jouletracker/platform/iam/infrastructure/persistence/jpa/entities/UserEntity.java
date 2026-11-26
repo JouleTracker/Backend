@@ -68,6 +68,9 @@ public class UserEntity extends AuditablePersistenceEntity {
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified;
 
+    @Column(name = "deactivated_at")
+    private Instant deactivatedAt;
+
     @OneToMany(
             mappedBy = "user",
             cascade = CascadeType.ALL,
@@ -88,6 +91,19 @@ public class UserEntity extends AuditablePersistenceEntity {
             String phone,
             UserStatus status,
             boolean emailVerified) {
+        this(id, email, passwordHash, firstName, lastName, phone, status, emailVerified, null);
+    }
+
+    public UserEntity(
+            Long id,
+            String email,
+            String passwordHash,
+            String firstName,
+            String lastName,
+            String phone,
+            UserStatus status,
+            boolean emailVerified,
+            Instant deactivatedAt) {
         this.id = id;
         this.email = email;
         this.passwordHash = passwordHash;
@@ -96,6 +112,7 @@ public class UserEntity extends AuditablePersistenceEntity {
         this.phone = phone;
         this.status = status != null ? status : UserStatus.PENDING_VERIFICATION;
         this.emailVerified = emailVerified;
+        this.deactivatedAt = deactivatedAt;
     }
 
     public void addRole(RoleEntity role) {

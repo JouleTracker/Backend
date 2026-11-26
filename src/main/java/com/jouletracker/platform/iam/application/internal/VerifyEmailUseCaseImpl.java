@@ -40,13 +40,13 @@ public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
     @Transactional
     public Result<UserResult, ApplicationError> handle(VerifyEmailCommand command) {
         if (command.token().isBlank()) {
-            return Result.failure(ApplicationError.validationError("token", "Verification token must not be blank"));
+            return Result.failure(ApplicationError.validationError("token", "El token de verificación no puede estar vacío"));
         }
 
         Optional<EmailVerificationToken> optionalToken = tokenRepository.findByToken(command.token());
         if (optionalToken.isEmpty()) {
             LOGGER.info("Verification failed: token string not found in repository.");
-            return Result.failure(ApplicationError.notFound("VerificationToken", "Provided token was not found"));
+            return Result.failure(ApplicationError.notFound("VerificationToken", "No se encontró el token de verificación proporcionado"));
         }
 
         EmailVerificationToken token = optionalToken.get();
@@ -55,7 +55,7 @@ public class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
             LOGGER.info("Verification rejected: token is expired or already used.");
             return Result.failure(ApplicationError.businessRuleViolation(
                     "TOKEN_EXPIRED",
-                    "Verification token has expired or has already been used"
+                    "El token de verificación ha expirado o ya fue utilizado"
             ));
         }
 
