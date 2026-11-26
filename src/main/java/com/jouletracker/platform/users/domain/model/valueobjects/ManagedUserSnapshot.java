@@ -24,10 +24,23 @@ public record ManagedUserSnapshot(
         String email,
         String firstName,
         String lastName,
+        @Nullable String phone,
         Set<String> roles,
         String status,
         boolean emailVerified,
         @Nullable Instant deactivatedAt) {
+
+    public ManagedUserSnapshot(
+            Long id,
+            String email,
+            String firstName,
+            String lastName,
+            Set<String> roles,
+            String status,
+            boolean emailVerified,
+            @Nullable Instant deactivatedAt) {
+        this(id, email, firstName, lastName, null, roles, status, emailVerified, deactivatedAt);
+    }
 
     public boolean isDeactivated() {
         return "INACTIVE".equalsIgnoreCase(status);

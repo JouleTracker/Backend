@@ -16,6 +16,7 @@ import com.jouletracker.platform.iam.interfaces.rest.resources.SignInRequest;
 import com.jouletracker.platform.iam.interfaces.rest.resources.SignUpRequest;
 import com.jouletracker.platform.shared.domain.model.valueobjects.PasswordPolicy;
 import com.jouletracker.platform.users.interfaces.rest.resources.ChangePasswordRequest;
+import com.jouletracker.platform.users.interfaces.rest.resources.UpdateUserProfileRequest;
 import com.jouletracker.platform.users.interfaces.rest.resources.UpdateUserStatusRequest;
 import jakarta.servlet.Filter;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +41,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -292,5 +294,51 @@ class IamAndUserManagementIntegrationTest {
                 .andExpect(jsonPath("$.lastName").value(""));
 
         verify(emailService).sendVerificationEmail(eq(EmailAddress.of(email)), eq("rodrigo"), any());
+    }
+
+    @Test
+    @DisplayName("[TS-12 / US-22] Should update authenticated user's own profile and persist phone")
+    void shouldUpdateOwnProfileAndEnforceOwnership() throws Exception {
+        User owner = createPersistedUser("profile-owner-" + UUID.randomUUID() + "@jouletracker.com", "InitPass123!", true, Set.of(Role.ROLE_USER));
+        User other = createPersistedUser("profile-other-" + UUID.randomUUID() + "@jouletracker.com", "InitPass123!", true, Set.of(Role.ROLE_USER));
+        String ownerJwt = tokenService.generateToken(owner);
+
+        // Unauthenticated -> 401
+        mockMvc.perform(put("/api/v1/users/{id}", owner.getId().value())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateUserProfileRequest("Miguel", "Jara", "+51 987654321"))))
+                .andExpect(status().isUnauthorized());
+
+        // Attempting to update another user's profile -> 403
+        mockMvc.perform(put("/api/v1/users/{id}", other.getId().value())
+                        .header("Authorization", "Bearer " + ownerJwt)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateUserProfileRequest("Miguel", "Jara", "+51 987654321"))))
+                .andExpect(status().isForbidden());
+
+        // Blank firstName -> 400
+        mockMvc.perform(put("/api/v1/users/{id}", owner.getId().value())
+                        .header("Authorization", "Bearer " + ownerJwt)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateUserProfileRequest("   ", "Jara", "+51 987654321"))))
+                .andExpect(status().isBadRequest());
+
+        // Valid update -> 200 OK
+        mockMvc.perform(put("/api/v1/users/{id}", owner.getId().value())
+                        .header("Authorization", "Bearer " + ownerJwt)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateUserProfileRequest("Miguel", "Jara", "+51 987654321"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.firstName").value("Miguel"))
+                .andExpect(jsonPath("$.lastName").value("Jara"))
+                .andExpect(jsonPath("$.phone").value("+51 987654321"));
+
+        // Persisted state visible via GET /api/v1/users/{id}
+        mockMvc.perform(get("/api/v1/users/{id}", owner.getId().value())
+                        .header("Authorization", "Bearer " + ownerJwt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.firstName").value("Miguel"))
+                .andExpect(jsonPath("$.lastName").value("Jara"))
+                .andExpect(jsonPath("$.phone").value("+51 987654321"));
     }
 }

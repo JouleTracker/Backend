@@ -19,6 +19,7 @@ public final class ManagedUserResourceAssembler {
                 result.email(),
                 result.firstName(),
                 result.lastName(),
+                result.phone(),
                 result.roles(),
                 result.status(),
                 result.emailVerified(),

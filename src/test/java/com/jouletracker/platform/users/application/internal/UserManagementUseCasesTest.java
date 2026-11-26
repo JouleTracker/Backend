@@ -2,6 +2,7 @@ package com.jouletracker.platform.users.application.internal;
 
 import com.jouletracker.platform.users.application.commands.ChangePasswordCommand;
 import com.jouletracker.platform.users.application.commands.DeactivateUserCommand;
+import com.jouletracker.platform.users.application.commands.UpdateUserProfileCommand;
 import com.jouletracker.platform.users.application.commands.UpdateUserStatusCommand;
 import com.jouletracker.platform.users.domain.model.valueobjects.AccountModerationStatus;
 import com.jouletracker.platform.users.domain.model.valueobjects.ManagedUserSnapshot;
@@ -36,12 +37,14 @@ class UserManagementUseCasesTest {
     private ChangePasswordUseCaseImpl changePasswordUseCase;
     private DeactivateUserUseCaseImpl deactivateUserUseCase;
     private UpdateUserStatusUseCaseImpl updateUserStatusUseCase;
+    private UpdateUserProfileUseCaseImpl updateUserProfileUseCase;
 
     @BeforeEach
     void setUp() {
         changePasswordUseCase = new ChangePasswordUseCaseImpl(userAccountPort);
         deactivateUserUseCase = new DeactivateUserUseCaseImpl(userAccountPort);
         updateUserStatusUseCase = new UpdateUserStatusUseCaseImpl(userAccountPort);
+        updateUserProfileUseCase = new UpdateUserProfileUseCaseImpl(userAccountPort);
     }
 
     private ManagedUserSnapshot activeUser(Long id) {
@@ -163,5 +166,55 @@ class UserManagementUseCasesTest {
 
         assertThat(result.isFailure()).isTrue();
         verify(userAccountPort, never()).updateAccountStatus(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("[TS-12] Should update authenticated user's own personal profile")
+    void shouldUpdateOwnProfileSuccessfully() {
+        var updatedSnapshot = new ManagedUserSnapshot(
+                USER_ID, "user@jouletracker.com", "Jane", "Smith", "+51 999888777",
+                Set.of("ROLE_USER"), "ACTIVE", true, null
+        );
+        when(userAccountPort.findById(USER_ID)).thenReturn(Optional.of(activeUser(USER_ID)));
+        when(userAccountPort.updateProfile(USER_ID, "Jane", "Smith", "+51 999888777"))
+                .thenReturn(updatedSnapshot);
+
+        var result = updateUserProfileUseCase.handle(
+                new UpdateUserProfileCommand(USER_ID, USER_ID, " Jane ", " Smith ", " +51 999888777 ")
+        );
+
+        assertThat(result.isSuccess()).isTrue();
+        var output = result.toOptional().orElseThrow();
+        assertThat(output.firstName()).isEqualTo("Jane");
+        assertThat(output.lastName()).isEqualTo("Smith");
+        assertThat(output.phone()).isEqualTo("+51 999888777");
+    }
+
+    @Test
+    @DisplayName("[TS-12] Should forbid updating another user's profile")
+    void shouldForbidUpdatingAnotherUsersProfile() {
+        var result = updateUserProfileUseCase.handle(
+                new UpdateUserProfileCommand(USER_ID, OTHER_USER_ID, "Jane", "Smith", "+51 999888777")
+        );
+
+        assertThat(result.isFailure()).isTrue();
+        verify(userAccountPort, never()).updateProfile(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("[TS-12] Should reject blank first name or oversized phone number")
+    void shouldRejectInvalidProfileData() {
+        when(userAccountPort.findById(USER_ID)).thenReturn(Optional.of(activeUser(USER_ID)));
+
+        var blankNameResult = updateUserProfileUseCase.handle(
+                new UpdateUserProfileCommand(USER_ID, USER_ID, "   ", "Smith", null)
+        );
+        var longPhoneResult = updateUserProfileUseCase.handle(
+                new UpdateUserProfileCommand(USER_ID, USER_ID, "Jane", "Smith", "123456789012345678901")
+        );
+
+        assertThat(blankNameResult.isFailure()).isTrue();
+        assertThat(longPhoneResult.isFailure()).isTrue();
+        verify(userAccountPort, never()).updateProfile(any(), any(), any(), any());
     }
 }

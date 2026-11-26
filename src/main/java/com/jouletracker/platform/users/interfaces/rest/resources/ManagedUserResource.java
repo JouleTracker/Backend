@@ -23,6 +23,9 @@ public record ManagedUserResource(
         @Schema(description = "Last name", example = "Doe")
         String lastName,
 
+        @Schema(description = "Contact phone number", example = "+51 987654321")
+        @Nullable String phone,
+
         @Schema(description = "Assigned security roles", example = "[\"ROLE_USER\"]")
         Set<String> roles,
 

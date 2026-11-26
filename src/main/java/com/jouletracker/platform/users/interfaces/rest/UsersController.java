@@ -7,12 +7,15 @@ import com.jouletracker.platform.shared.interfaces.rest.transform.ProblemDetailF
 import com.jouletracker.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import com.jouletracker.platform.users.application.commands.ChangePasswordCommand;
 import com.jouletracker.platform.users.application.commands.DeactivateUserCommand;
+import com.jouletracker.platform.users.application.commands.UpdateUserProfileCommand;
 import com.jouletracker.platform.users.application.commands.UpdateUserStatusCommand;
 import com.jouletracker.platform.users.application.usecases.ChangePasswordUseCase;
 import com.jouletracker.platform.users.application.usecases.DeactivateUserUseCase;
+import com.jouletracker.platform.users.application.usecases.UpdateUserProfileUseCase;
 import com.jouletracker.platform.users.application.usecases.UpdateUserStatusUseCase;
 import com.jouletracker.platform.users.interfaces.rest.resources.ChangePasswordRequest;
 import com.jouletracker.platform.users.interfaces.rest.resources.ManagedUserResource;
+import com.jouletracker.platform.users.interfaces.rest.resources.UpdateUserProfileRequest;
 import com.jouletracker.platform.users.interfaces.rest.resources.UpdateUserStatusRequest;
 import com.jouletracker.platform.users.interfaces.rest.transform.ManagedUserResourceAssembler;
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,14 +53,69 @@ public class UsersController {
     private final ChangePasswordUseCase changePasswordUseCase;
     private final DeactivateUserUseCase deactivateUserUseCase;
     private final UpdateUserStatusUseCase updateUserStatusUseCase;
+    private final UpdateUserProfileUseCase updateUserProfileUseCase;
 
     public UsersController(
             ChangePasswordUseCase changePasswordUseCase,
             DeactivateUserUseCase deactivateUserUseCase,
-            UpdateUserStatusUseCase updateUserStatusUseCase) {
+            UpdateUserStatusUseCase updateUserStatusUseCase,
+            UpdateUserProfileUseCase updateUserProfileUseCase) {
         this.changePasswordUseCase = changePasswordUseCase;
         this.deactivateUserUseCase = deactivateUserUseCase;
         this.updateUserStatusUseCase = updateUserStatusUseCase;
+        this.updateUserProfileUseCase = updateUserProfileUseCase;
+    }
+
+    /**
+     * Updates the authenticated user's own personal profile information (TS-12 / US-22).
+     *
+     * @param id        the target user ID
+     * @param request   the updated first name, last name, and optional phone number
+     * @param principal the authenticated security principal
+     * @return 200 OK with updated {@link ManagedUserResource}, or RFC 9457 error
+     */
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(
+            summary = "Update user profile",
+            description = "Updates the authenticated user's own first name, last name, and optional phone number."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Profile updated successfully",
+                    content = @Content(schema = @Schema(implementation = ManagedUserResource.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid profile data",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "401", description = "Authentication required",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "403", description = "Forbidden to modify another user's profile",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "User not found",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    public ResponseEntity<?> updateProfile(
+            @Parameter(description = "Unique identifier of the user account", required = true)
+            @PathVariable("id") Long id,
+            @Valid @RequestBody UpdateUserProfileRequest request,
+            @AuthenticationPrincipal @Nullable AuthenticatedUserDetails principal) {
+        Long authenticatedUserId = resolveAuthenticatedUserId(principal);
+        if (authenticatedUserId == null) {
+            return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(
+                    ApplicationError.unauthorized("Full authentication is required to update profile")
+            );
+        }
+
+        var command = new UpdateUserProfileCommand(
+                id,
+                authenticatedUserId,
+                request.firstName(),
+                request.lastName(),
+                request.phone()
+        );
+        var result = updateUserProfileUseCase.handle(command);
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                ManagedUserResourceAssembler::toResourceFromResult,
+                HttpStatus.OK
+        );
     }
 
     /**
