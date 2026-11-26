@@ -16,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -27,9 +26,9 @@ import static org.mockito.Mockito.*;
 @DisplayName("User Management Context Use Cases Unit Tests (US-25, US-40, US-49)")
 class UserManagementUseCasesTest {
 
-    private static final UUID USER_ID = UUID.fromString("67417618-dd5e-11f1-a688-50ebf6e6183d");
-    private static final UUID OTHER_USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
-    private static final UUID ADMIN_ID = UUID.fromString("99999999-9999-9999-9999-999999999999");
+    private static final Long USER_ID = 1L;
+    private static final Long OTHER_USER_ID = 2L;
+    private static final Long ADMIN_ID = 99L;
 
     @Mock
     private ManagedUserAccountPort userAccountPort;
@@ -45,7 +44,7 @@ class UserManagementUseCasesTest {
         updateUserStatusUseCase = new UpdateUserStatusUseCaseImpl(userAccountPort);
     }
 
-    private ManagedUserSnapshot activeUser(UUID id) {
+    private ManagedUserSnapshot activeUser(Long id) {
         return new ManagedUserSnapshot(
                 id,
                 "user@jouletracker.com",

@@ -1,36 +1,40 @@
 package com.jouletracker.platform.shared.infrastructure.persistence.jpa.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.time.Instant;
+import java.util.Date;
 
 /**
- * Base JPA persistence mapped superclass providing auditing fields.
+ * Base JPA persistence entity for all persistence entities that require auditing.
  *
- * <p>Provides {@code createdAt} and {@code updatedAt} auditing timestamps.
- * Entities declare their own {@code @Id} with the appropriate key type (UUID, Long, etc.).
- * This keeps primary key strategy decoupled from entity auditing concerns.</p>
+ * <p>Provides {@code id}, {@code createdAt}, and {@code updatedAt} fields.
+ * This class intentionally lives in the infrastructure layer to keep JPA and
+ * Spring Data auditing concerns out of the domain model.</p>
+ *
+ * <p>All bounded-context JPA persistence entities using {@code Long} identity should extend this class
+ * instead of placing {@code @Id} and auditing fields directly.</p>
  */
 @Getter
-@Setter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 public abstract class AuditableAbstractPersistenceEntity {
 
+    @Setter
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    @Column(nullable = false, updatable = false)
+    private Date createdAt;
 
     @LastModifiedDate
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Column(nullable = false)
+    private Date updatedAt;
 
 }
-

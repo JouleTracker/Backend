@@ -5,12 +5,11 @@ import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Immutable domain snapshot representing a managed user account within the User Management bounded context.
  *
- * @param id            the unique user UUID
+ * @param id            the unique user ID
  * @param email         the user's normalized email address
  * @param firstName     the user's first name
  * @param lastName      the user's last name
@@ -21,7 +20,7 @@ import java.util.UUID;
  */
 @NullMarked
 public record ManagedUserSnapshot(
-        UUID id,
+        Long id,
         String email,
         String firstName,
         String lastName,

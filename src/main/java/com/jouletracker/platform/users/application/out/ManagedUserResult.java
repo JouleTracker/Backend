@@ -6,14 +6,13 @@ import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Application output projection representing a user account managed within the User Management context.
  */
 @NullMarked
 public record ManagedUserResult(
-        UUID id,
+        Long id,
         String email,
         String firstName,
         String lastName,

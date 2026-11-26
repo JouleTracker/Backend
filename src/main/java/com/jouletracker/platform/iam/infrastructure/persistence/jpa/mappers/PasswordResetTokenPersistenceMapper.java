@@ -11,7 +11,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * Mapper bridging between {@link PasswordResetToken} domain entities and {@link PasswordResetTokenEntity}.
@@ -45,7 +44,7 @@ public class PasswordResetTokenPersistenceMapper {
      * @return a new PasswordResetTokenEntity ready for persistence
      */
     public PasswordResetTokenEntity toEntity(PasswordResetToken domain) {
-        UUID userIdValue = Objects.requireNonNull(
+        Long userIdValue = Objects.requireNonNull(
                 domain.getUserId().value(),
                 "UserId value must not be null when persisting a password reset token"
         );

@@ -6,12 +6,11 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Application output record representing a safe, non-sensitive projection of a {@link User}.
  *
- * @param id            the unique user UUID
+ * @param id            the unique user ID
  * @param email         the email address
  * @param firstName     the first name
  * @param lastName      the last name
@@ -20,7 +19,7 @@ import java.util.UUID;
  */
 @NullMarked
 public record UserResult(
-        @Nullable UUID id,
+        @Nullable Long id,
         String email,
         String firstName,
         String lastName,

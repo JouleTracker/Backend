@@ -1,13 +1,15 @@
 package com.jouletracker.platform.iam.infrastructure.persistence.jpa.entities;
 
 import com.jouletracker.platform.iam.domain.model.valueobjects.UserStatus;
-import com.jouletracker.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
+import com.jouletracker.platform.shared.infrastructure.persistence.jpa.entities.AuditablePersistenceEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
@@ -19,13 +21,12 @@ import lombok.Setter;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 /**
- * JPA persistence entity mapped to the PostgreSQL {@code users} table.
+ * JPA persistence entity mapped to the {@code users} table.
  *
- * <p>Extends {@link AuditableAbstractPersistenceEntity} to inherit auditing timestamps.
- * Uses native PostgreSQL {@code uuid} for the primary key.</p>
+ * <p>Extends {@link AuditablePersistenceEntity} to inherit auditing fields.
+ * Manages identity using autoincremental {@code Long}.</p>
  */
 @Getter
 @Setter
@@ -36,17 +37,16 @@ import java.util.UUID;
                 @UniqueConstraint(name = "uk_users_email", columnNames = "email")
         },
         indexes = {
-                @Index(name = "idx_users_email", columnList = "email"),
-                @Index(name = "idx_users_status", columnList = "status")
+                @Index(name = "idx_users_email", columnList = "email")
         }
 )
-public class UserEntity extends AuditableAbstractPersistenceEntity {
+public class UserEntity extends AuditablePersistenceEntity {
 
     @Id
-    @Column(name = "id", nullable = false, updatable = false)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Column(name = "email", nullable = false, length = 150)
+    @Column(nullable = false, length = 150)
     private String email;
 
     @Column(name = "password_hash", nullable = false, length = 255)
@@ -83,7 +83,19 @@ public class UserEntity extends AuditableAbstractPersistenceEntity {
     }
 
     public UserEntity(
-            UUID id,
+            Long id,
+            String email,
+            String passwordHash,
+            String firstName,
+            String lastName,
+            String phone,
+            UserStatus status,
+            boolean emailVerified) {
+        this(id, email, passwordHash, firstName, lastName, phone, status, emailVerified, null);
+    }
+
+    public UserEntity(
+            Long id,
             String email,
             String passwordHash,
             String firstName,
@@ -103,20 +115,8 @@ public class UserEntity extends AuditableAbstractPersistenceEntity {
         this.deactivatedAt = deactivatedAt;
     }
 
-    public UserEntity(
-            UUID id,
-            String email,
-            String passwordHash,
-            String firstName,
-            String lastName,
-            String phone,
-            UserStatus status,
-            boolean emailVerified) {
-        this(id, email, passwordHash, firstName, lastName, phone, status, emailVerified, null);
-    }
-
     public void addRole(RoleEntity role) {
-        UserRoleEntity userRole = new UserRoleEntity(UUID.randomUUID(), this, role, Instant.now());
+        UserRoleEntity userRole = new UserRoleEntity(null, this, role, Instant.now());
         this.userRoles.add(userRole);
     }
 

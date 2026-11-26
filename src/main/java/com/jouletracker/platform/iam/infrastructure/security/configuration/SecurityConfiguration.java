@@ -23,6 +23,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -110,10 +111,13 @@ public class SecurityConfiguration {
                                 "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
+                        // Authenticated user self-service endpoints (US-25, US-40)
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/users/*/password").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/users/*/deactivate").authenticated()
                         // Administrative moderation endpoints (US-49)
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/users/*/status").hasRole("ADMIN")
-                        // All other endpoints require authentication
-                        .anyRequest().authenticated()
+                        // All other endpoints temporarily permitted until JWT enforcement is enabled across frontend/IoT
+                        .anyRequest().permitAll()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -128,7 +132,12 @@ public class SecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         var configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(applicationProperties.getNormalizedFrontendBaseUrl()));
+        var allowedOrigins = Arrays.stream(applicationProperties.getFrontendUrl().split(","))
+                .map(String::trim)
+                .map(origin -> origin.replaceAll("/+$", ""))
+                .filter(origin -> !origin.isEmpty())
+                .toList();
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(
                 "Authorization",

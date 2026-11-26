@@ -30,9 +30,6 @@ public class OpenApiConfiguration {
     @Value("${documentation.application.version}")
     String applicationVersion;
 
-    @Value("${server.port:8081}")
-    String serverPort;
-
     // Methods
 
     /**
@@ -64,14 +61,14 @@ public class OpenApiConfiguration {
         // Add server configurations
         openApi.servers(List.of(
                 new Server()
-                        .url("http://localhost:" + this.serverPort)
-                        .description("Local Development Environment"),
+                        .url("/")
+                        .description("Current Server"),
                 new Server()
-                        .url("https://staging-api.jouletracker.com")
-                        .description("Staging Environment"),
+                        .url("https://jouletracker-api-kmok.onrender.com")
+                        .description("Render Production Environment"),
                 new Server()
-                        .url("https://api.jouletracker.com")
-                        .description("Production Environment")
+                        .url("http://localhost:8080")
+                        .description("Local Development Environment")
         ));
 
         // Add a security scheme

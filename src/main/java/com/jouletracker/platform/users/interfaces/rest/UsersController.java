@@ -36,13 +36,11 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
 /**
  * REST controller for the User Management bounded context exposing password updates,
  * account soft-deactivation, and administrative user moderation endpoints.
  */
-@RestController
+@RestController("userManagementController")
 @RequestMapping(value = "/api/v1/users", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Users", description = "Endpoints for user password management, account deactivation, and administrative moderation")
 @SecurityRequirement(name = "bearerAuth")
@@ -89,10 +87,10 @@ public class UsersController {
     })
     public ResponseEntity<?> changePassword(
             @Parameter(description = "Unique identifier of the user account", required = true)
-            @PathVariable("id") UUID id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody ChangePasswordRequest request,
             @AuthenticationPrincipal @Nullable AuthenticatedUserDetails principal) {
-        UUID authenticatedUserId = resolveAuthenticatedUserId(principal);
+        Long authenticatedUserId = resolveAuthenticatedUserId(principal);
         if (authenticatedUserId == null) {
             return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(
                     ApplicationError.unauthorized("Full authentication is required to change password")
@@ -139,9 +137,9 @@ public class UsersController {
     })
     public ResponseEntity<?> deactivateAccount(
             @Parameter(description = "Unique identifier of the user account to deactivate", required = true)
-            @PathVariable("id") UUID id,
+            @PathVariable("id") Long id,
             @AuthenticationPrincipal @Nullable AuthenticatedUserDetails principal) {
-        UUID authenticatedUserId = resolveAuthenticatedUserId(principal);
+        Long authenticatedUserId = resolveAuthenticatedUserId(principal);
         if (authenticatedUserId == null) {
             return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(
                     ApplicationError.unauthorized("Full authentication is required to deactivate an account")
@@ -185,10 +183,10 @@ public class UsersController {
     })
     public ResponseEntity<?> updateUserStatus(
             @Parameter(description = "Unique identifier of the target user account", required = true)
-            @PathVariable("id") UUID id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UpdateUserStatusRequest request,
             @AuthenticationPrincipal @Nullable AuthenticatedUserDetails principal) {
-        UUID adminUserId = resolveAuthenticatedUserId(principal);
+        Long adminUserId = resolveAuthenticatedUserId(principal);
         if (adminUserId == null) {
             return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(
                     ApplicationError.unauthorized("Full authentication is required to moderate user accounts")
@@ -204,7 +202,7 @@ public class UsersController {
         );
     }
 
-    private @Nullable UUID resolveAuthenticatedUserId(@Nullable AuthenticatedUserDetails principal) {
+    private @Nullable Long resolveAuthenticatedUserId(@Nullable AuthenticatedUserDetails principal) {
         if (principal != null && principal.getId() != null) {
             return principal.getId();
         }

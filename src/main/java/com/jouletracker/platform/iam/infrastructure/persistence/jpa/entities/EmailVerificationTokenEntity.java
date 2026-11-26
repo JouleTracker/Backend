@@ -1,6 +1,6 @@
 package com.jouletracker.platform.iam.infrastructure.persistence.jpa.entities;
 
-import com.jouletracker.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
+import com.jouletracker.platform.shared.infrastructure.persistence.jpa.entities.AuditablePersistenceEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,13 +13,11 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
-import java.util.UUID;
 
 /**
- * JPA persistence entity mapped to the PostgreSQL {@code email_verification_tokens} table.
+ * JPA persistence entity mapped to the database table storing single-use email verification tokens.
  *
- * <p>Extends {@link AuditableAbstractPersistenceEntity} to inherit auditing timestamps.
- * Uses PostgreSQL identity generation for the primary key and native {@code uuid} for {@code user_id}.</p>
+ * <p>Extends {@link AuditablePersistenceEntity} to inherit auditing fields.</p>
  */
 @Getter
 @Setter
@@ -34,17 +32,17 @@ import java.util.UUID;
                 @Index(name = "idx_tokens_user_id", columnList = "user_id")
         }
 )
-public class EmailVerificationTokenEntity extends AuditableAbstractPersistenceEntity {
+public class EmailVerificationTokenEntity extends AuditablePersistenceEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "token", nullable = false, length = 64)
+    @Column(nullable = false, length = 64)
     private String token;
 
     @Column(name = "user_id", nullable = false)
-    private UUID userId;
+    private Long userId;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
@@ -55,7 +53,7 @@ public class EmailVerificationTokenEntity extends AuditableAbstractPersistenceEn
     public EmailVerificationTokenEntity() {
     }
 
-    public EmailVerificationTokenEntity(String token, UUID userId, Instant expiresAt, Instant usedAt) {
+    public EmailVerificationTokenEntity(String token, Long userId, Instant expiresAt, Instant usedAt) {
         this.token = token;
         this.userId = userId;
         this.expiresAt = expiresAt;

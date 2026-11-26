@@ -5,15 +5,14 @@ import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * REST resource representing a managed user account, including lifecycle status and deactivation metadata.
  */
 @Schema(description = "Managed user account resource")
 public record ManagedUserResource(
-        @Schema(description = "Unique user identifier", example = "67417618-dd5e-11f1-a688-50ebf6e6183d")
-        UUID id,
+        @Schema(description = "Unique user identifier", example = "1")
+        Long id,
 
         @Schema(description = "User email address", example = "john.doe@jouletracker.com")
         String email,

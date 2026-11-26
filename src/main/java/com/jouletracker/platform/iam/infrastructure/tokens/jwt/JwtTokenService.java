@@ -62,7 +62,7 @@ public class JwtTokenService implements TokenService {
                 .signWith(getSigningKey());
 
         if (user.getId().value() != null) {
-            builder.claim("id", user.getId().value().toString());
+            builder.claim("id", user.getId().value());
         }
 
         return builder.compact();
@@ -91,14 +91,17 @@ public class JwtTokenService implements TokenService {
     }
 
     @Override
-    public @Nullable UUID extractUserId(String token) {
+    public @Nullable Long extractUserId(String token) {
         Claims claims = extractClaims(token);
         Object idVal = claims.get("id");
+        if (idVal instanceof Number num) {
+            return num.longValue();
+        }
         if (idVal instanceof String str && !str.isBlank()) {
             try {
-                return UUID.fromString(str);
-            } catch (IllegalArgumentException ex) {
-                LOGGER.debug("Failed to parse UUID from JWT claim: {}", idVal);
+                return Long.valueOf(str);
+            } catch (NumberFormatException ex) {
+                LOGGER.debug("Failed to parse Long user ID from JWT claim: {}", idVal);
                 return null;
             }
         }

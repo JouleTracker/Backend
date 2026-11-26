@@ -10,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * Mapper bridging between the {@link EmailVerificationToken} domain entity and {@link EmailVerificationTokenEntity}.
@@ -44,7 +43,7 @@ public class EmailVerificationTokenPersistenceMapper {
      * @return a new EmailVerificationTokenEntity
      */
     public EmailVerificationTokenEntity toEntity(EmailVerificationToken domain) {
-        UUID userIdValue = Objects.requireNonNull(
+        Long userIdValue = Objects.requireNonNull(
                 domain.getUserId().value(),
                 "UserId value must not be null when persisting a verification token"
         );

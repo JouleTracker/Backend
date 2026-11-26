@@ -10,7 +10,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Spring Security {@link UserDetails} adapter wrapping the IAM {@link User} domain aggregate.
@@ -21,7 +20,7 @@ import java.util.UUID;
 @NullMarked
 public class AuthenticatedUserDetails implements UserDetails {
 
-    private final @Nullable UUID id;
+    private final @Nullable Long id;
     private final String username;
     private final String password;
     private final boolean enabled;
@@ -41,7 +40,7 @@ public class AuthenticatedUserDetails implements UserDetails {
                 .toList();
     }
 
-    public @Nullable UUID getId() {
+    public @Nullable Long getId() {
         return id;
     }
 

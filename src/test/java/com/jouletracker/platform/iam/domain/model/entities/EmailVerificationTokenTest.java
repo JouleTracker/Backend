@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -15,12 +14,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("EmailVerificationToken Entity Unit Tests")
 class EmailVerificationTokenTest {
 
-    private static final UUID USER_UUID = UUID.fromString("67417618-dd5e-11f1-a688-50ebf6e6183d");
+    private static final Long USER_ID = 1L;
 
     @Test
     @DisplayName("Should create pending valid token")
     void shouldCreatePendingValidToken() {
-        var token = EmailVerificationToken.create(UserId.of(USER_UUID), "token-123", Duration.ofHours(24));
+        var token = EmailVerificationToken.create(UserId.of(USER_ID), "token-123", Duration.ofHours(24));
 
         assertThat(token.isValid()).isTrue();
         assertThat(token.isExpired()).isFalse();
@@ -31,7 +30,7 @@ class EmailVerificationTokenTest {
     @Test
     @DisplayName("Should mark token as used successfully")
     void shouldMarkTokenAsUsed() {
-        var token = EmailVerificationToken.create(UserId.of(USER_UUID), "token-123", Duration.ofHours(24));
+        var token = EmailVerificationToken.create(UserId.of(USER_ID), "token-123", Duration.ofHours(24));
         token.markAsUsed();
 
         assertThat(token.isUsed()).isTrue();
@@ -43,7 +42,7 @@ class EmailVerificationTokenTest {
     @Test
     @DisplayName("Should throw exception when attempting to use already consumed token")
     void shouldThrowWhenMarkingUsedTwice() {
-        var token = EmailVerificationToken.create(UserId.of(USER_UUID), "token-123", Duration.ofHours(24));
+        var token = EmailVerificationToken.create(UserId.of(USER_ID), "token-123", Duration.ofHours(24));
         token.markAsUsed();
 
         assertThatThrownBy(token::markAsUsed)
@@ -57,7 +56,7 @@ class EmailVerificationTokenTest {
         var expiredToken = new EmailVerificationToken(
                 1L,
                 "token-expired",
-                UserId.of(USER_UUID),
+                UserId.of(USER_ID),
                 Instant.now().minus(Duration.ofHours(1)),
                 null
         );

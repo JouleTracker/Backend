@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Spring Data JPA repository for {@link PasswordResetTokenEntity}.
@@ -23,10 +22,10 @@ public interface SpringDataJpaPasswordResetTokenRepository extends JpaRepository
     Optional<PasswordResetTokenEntity> findByToken(String token);
 
     /**
-     * Deletes all password reset tokens belonging to the given user UUID.
+     * Deletes all password reset tokens belonging to the given user ID.
      *
-     * @param userId the user UUID
+     * @param userId the user ID
      */
     @Modifying
-    void deleteByUserId(UUID userId);
+    void deleteByUserId(Long userId);
 }

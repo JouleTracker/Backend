@@ -1,6 +1,6 @@
 package com.jouletracker.platform.iam.infrastructure.persistence.jpa.entities;
 
-import com.jouletracker.platform.shared.infrastructure.persistence.jpa.entities.AuditableAbstractPersistenceEntity;
+import com.jouletracker.platform.shared.infrastructure.persistence.jpa.entities.AuditablePersistenceEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,7 +13,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
-import java.util.UUID;
 
 /**
  * JPA persistence entity mapped to the PostgreSQL {@code password_reset_tokens} table.
@@ -34,7 +33,7 @@ import java.util.UUID;
                 @Index(name = "idx_password_reset_tokens_user_id", columnList = "user_id")
         }
 )
-public class PasswordResetTokenEntity extends AuditableAbstractPersistenceEntity {
+public class PasswordResetTokenEntity extends AuditablePersistenceEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,7 +43,7 @@ public class PasswordResetTokenEntity extends AuditableAbstractPersistenceEntity
     private String token;
 
     @Column(name = "user_id", nullable = false)
-    private UUID userId;
+    private Long userId;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
@@ -55,7 +54,7 @@ public class PasswordResetTokenEntity extends AuditableAbstractPersistenceEntity
     public PasswordResetTokenEntity() {
     }
 
-    public PasswordResetTokenEntity(String token, UUID userId, Instant expiresAt, Instant usedAt) {
+    public PasswordResetTokenEntity(String token, Long userId, Instant expiresAt, Instant usedAt) {
         this.token = token;
         this.userId = userId;
         this.expiresAt = expiresAt;

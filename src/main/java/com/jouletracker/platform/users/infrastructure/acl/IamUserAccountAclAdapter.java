@@ -18,7 +18,6 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -44,13 +43,13 @@ public class IamUserAccountAclAdapter implements ManagedUserAccountPort {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<ManagedUserSnapshot> findById(UUID userId) {
+    public Optional<ManagedUserSnapshot> findById(Long userId) {
         return userRepository.findById(UserId.of(userId)).map(this::toSnapshot);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean verifyPassword(UUID userId, String rawPassword) {
+    public boolean verifyPassword(Long userId, String rawPassword) {
         return userRepository.findById(UserId.of(userId))
                 .map(user -> passwordHashingService.matches(rawPassword, user.getPasswordHash()))
                 .orElse(false);
@@ -58,7 +57,7 @@ public class IamUserAccountAclAdapter implements ManagedUserAccountPort {
 
     @Override
     @Transactional
-    public ManagedUserSnapshot updatePassword(UUID userId, String newRawPassword) {
+    public ManagedUserSnapshot updatePassword(Long userId, String newRawPassword) {
         User user = requireUser(userId);
         PasswordHash newHash = passwordHashingService.hash(newRawPassword);
         user.updatePassword(newHash);
@@ -68,7 +67,7 @@ public class IamUserAccountAclAdapter implements ManagedUserAccountPort {
 
     @Override
     @Transactional
-    public ManagedUserSnapshot deactivateAccount(UUID userId, Instant deactivatedAt) {
+    public ManagedUserSnapshot deactivateAccount(Long userId, Instant deactivatedAt) {
         User user = requireUser(userId);
         user.deactivate(deactivatedAt);
         User savedUser = userRepository.save(user);
@@ -77,7 +76,7 @@ public class IamUserAccountAclAdapter implements ManagedUserAccountPort {
 
     @Override
     @Transactional
-    public ManagedUserSnapshot updateAccountStatus(UUID userId, AccountModerationStatus targetStatus, Instant timestamp) {
+    public ManagedUserSnapshot updateAccountStatus(Long userId, AccountModerationStatus targetStatus, Instant timestamp) {
         User user = requireUser(userId);
         UserStatus mappedStatus = switch (targetStatus) {
             case ACTIVE -> UserStatus.ACTIVE;
@@ -90,13 +89,13 @@ public class IamUserAccountAclAdapter implements ManagedUserAccountPort {
         return toSnapshot(savedUser);
     }
 
-    private User requireUser(UUID userId) {
+    private User requireUser(Long userId) {
         return userRepository.findById(UserId.of(userId))
                 .orElseThrow(() -> new IllegalStateException("User not found for ID: " + userId));
     }
 
     private ManagedUserSnapshot toSnapshot(User user) {
-        UUID id = Objects.requireNonNull(user.getId().value(), "Persisted User must have a non-null ID");
+        Long id = Objects.requireNonNull(user.getId().value(), "Persisted User must have a non-null ID");
         Set<String> roleNames = user.getRoles().stream()
                 .map(Role::name)
                 .collect(Collectors.toUnmodifiableSet());

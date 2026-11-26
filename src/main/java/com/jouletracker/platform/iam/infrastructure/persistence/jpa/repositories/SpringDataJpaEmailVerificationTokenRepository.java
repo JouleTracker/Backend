@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Spring Data JPA repository for {@link EmailVerificationTokenEntity}.
@@ -23,10 +22,10 @@ public interface SpringDataJpaEmailVerificationTokenRepository extends JpaReposi
     Optional<EmailVerificationTokenEntity> findByToken(String token);
 
     /**
-     * Deletes all tokens belonging to the given user UUID.
+     * Deletes all tokens belonging to the given user ID.
      *
-     * @param userId the user UUID
+     * @param userId the user ID
      */
     @Modifying
-    void deleteByUserId(UUID userId);
+    void deleteByUserId(Long userId);
 }
