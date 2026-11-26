@@ -19,7 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 /**
- * Implementation of the {@link SignInUseCase} orchestrating credential authentication and JWT issuance.
+ * Implementation of {@link SignInUseCase} orchestrating credential authentication and JWT issuance.
+ *
+ * <p>Blocks authentication for unverified, soft-deactivated, suspended, or banned accounts.</p>
  */
 @Service
 @NullMarked
@@ -65,9 +67,25 @@ public class SignInUseCaseImpl implements SignInUseCase {
             return Result.failure(ApplicationError.unauthorized(INVALID_CREDENTIALS_MSG));
         }
 
+        if (user.isDeactivated()) {
+            LOGGER.info("Authentication rejected: user account has been deactivated.");
+            return Result.failure(ApplicationError.forbidden(
+                    "Account has been deactivated. Please contact support to reactivate your account."
+            ));
+        }
+
+        if (user.isRestricted()) {
+            LOGGER.info("Authentication rejected: user account is suspended or banned.");
+            return Result.failure(ApplicationError.forbidden(
+                    "Account has been suspended or banned. Please contact support."
+            ));
+        }
+
         if (!user.isEmailVerified()) {
             LOGGER.info("Authentication rejected: account email has not been confirmed.");
-            return Result.failure(ApplicationError.forbidden(
+            return Result.failure(new ApplicationError(
+                    "UNVERIFIED_EMAIL",
+                    "Forbidden: Account email has not been verified",
                     "Account email has not been verified. Please check your inbox."
             ));
         }
