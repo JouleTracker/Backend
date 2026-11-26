@@ -155,4 +155,23 @@ class UserTest {
         assertThat(user.getDeactivatedAt()).isNull();
         assertThat(user.canAuthenticate()).isTrue();
     }
+
+    @Test
+    @DisplayName("Should allow blank or null lastName for single-word names and deduplicate identical names")
+    void shouldAllowOptionalLastNameAndDeduplicateFullName() {
+        var email = EmailAddress.of("rodrigo@jouletracker.com");
+        var hash = PasswordHash.of("$2a$12$e8x6...dummyhash");
+
+        var blankLastNameUser = User.create(email, hash, "rodrigo", "", Set.of(Role.ROLE_USER));
+        assertThat(blankLastNameUser.getFirstName()).isEqualTo("rodrigo");
+        assertThat(blankLastNameUser.getLastName()).isEmpty();
+        assertThat(blankLastNameUser.getFullName()).isEqualTo("rodrigo");
+
+        var nullLastNameUser = User.create(email, hash, "rodrigo", null, Set.of(Role.ROLE_USER));
+        assertThat(nullLastNameUser.getLastName()).isEmpty();
+        assertThat(nullLastNameUser.getFullName()).isEqualTo("rodrigo");
+
+        var duplicateNameUser = User.create(email, hash, "rodrigo", "RODRIGO", Set.of(Role.ROLE_USER));
+        assertThat(duplicateNameUser.getFullName()).isEqualTo("rodrigo");
+    }
 }

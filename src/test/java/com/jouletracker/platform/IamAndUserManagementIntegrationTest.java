@@ -13,6 +13,8 @@ import com.jouletracker.platform.iam.interfaces.rest.resources.ForgotPasswordReq
 import com.jouletracker.platform.iam.interfaces.rest.resources.ResendVerificationRequest;
 import com.jouletracker.platform.iam.interfaces.rest.resources.ResetPasswordRequest;
 import com.jouletracker.platform.iam.interfaces.rest.resources.SignInRequest;
+import com.jouletracker.platform.iam.interfaces.rest.resources.SignUpRequest;
+import com.jouletracker.platform.shared.domain.model.valueobjects.PasswordPolicy;
 import com.jouletracker.platform.users.interfaces.rest.resources.ChangePasswordRequest;
 import com.jouletracker.platform.users.interfaces.rest.resources.UpdateUserStatusRequest;
 import jakarta.servlet.Filter;
@@ -117,20 +119,20 @@ class IamAndUserManagementIntegrationTest {
 
         mockMvc.perform(post("/api/v1/authentication/reset-password")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ResetPasswordRequest(rawResetToken, "NewPass456!"))))
+                        .content(objectMapper.writeValueAsString(new ResetPasswordRequest(rawResetToken, "NewPass#456-_.+"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Password has been reset successfully."));
+                .andExpect(jsonPath("$.message").value("La contraseña ha sido restablecida correctamente."));
 
         // Reusing the same token must fail with 422 Unprocessable Entity
         mockMvc.perform(post("/api/v1/authentication/reset-password")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ResetPasswordRequest(rawResetToken, "AnotherPass789!"))))
+                        .content(objectMapper.writeValueAsString(new ResetPasswordRequest(rawResetToken, "AnotherPass789#"))))
                 .andExpect(status().isUnprocessableEntity());
 
         // Sign-in with new password succeeds
         mockMvc.perform(post("/api/v1/authentication/sign-in")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new SignInRequest(email, "NewPass456!"))))
+                        .content(objectMapper.writeValueAsString(new SignInRequest(email, "NewPass#456-_.+"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isNotEmpty());
     }
@@ -145,7 +147,7 @@ class IamAndUserManagementIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new ResendVerificationRequest(unverifiedEmail))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Verification email has been resent successfully."));
+                .andExpect(jsonPath("$.message").value("El correo de verificación ha sido reenviado correctamente."));
 
         verify(emailService).sendVerificationEmail(eq(EmailAddress.of(unverifiedEmail)), any(), any());
 
@@ -168,30 +170,39 @@ class IamAndUserManagementIntegrationTest {
         // Unauthenticated -> 401
         mockMvc.perform(put("/api/v1/users/{id}/password", owner.getId().value())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ChangePasswordRequest("InitPass123!", "UpdatedPass456!"))))
+                        .content(objectMapper.writeValueAsString(new ChangePasswordRequest("InitPass123!", "UpdatedPass456#"))))
                 .andExpect(status().isUnauthorized());
 
         // Attempting to change another user's password -> 403
         mockMvc.perform(put("/api/v1/users/{id}/password", other.getId().value())
                         .header("Authorization", "Bearer " + ownerJwt)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ChangePasswordRequest("InitPass123!", "UpdatedPass456!"))))
+                        .content(objectMapper.writeValueAsString(new ChangePasswordRequest("InitPass123!", "UpdatedPass456#"))))
                 .andExpect(status().isForbidden());
+
+        // Weak new password -> 400 with Spanish validation message
+        mockMvc.perform(put("/api/v1/users/{id}/password", owner.getId().value())
+                        .header("Authorization", "Bearer " + ownerJwt)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ChangePasswordRequest("InitPass123!", "WeakPass123"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Error de validación"))
+                .andExpect(jsonPath("$.invalidParams[0].message").value(PasswordPolicy.POLICY_MESSAGE));
 
         // Wrong current password -> 400
         mockMvc.perform(put("/api/v1/users/{id}/password", owner.getId().value())
                         .header("Authorization", "Bearer " + ownerJwt)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ChangePasswordRequest("WrongPass123!", "UpdatedPass456!"))))
+                        .content(objectMapper.writeValueAsString(new ChangePasswordRequest("WrongPass123!", "UpdatedPass456#"))))
                 .andExpect(status().isBadRequest());
 
-        // Valid change -> 200
+        // Valid change with common special chars (#, -, _, ., +) -> 200
         mockMvc.perform(put("/api/v1/users/{id}/password", owner.getId().value())
                         .header("Authorization", "Bearer " + ownerJwt)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new ChangePasswordRequest("InitPass123!", "UpdatedPass456!"))))
+                        .content(objectMapper.writeValueAsString(new ChangePasswordRequest("InitPass123!", "Updated#Pass-456_.+"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Password updated successfully."));
+                .andExpect(jsonPath("$.message").value("La contraseña se actualizó correctamente."));
     }
 
     @Test
@@ -265,5 +276,21 @@ class IamAndUserManagementIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new SignInRequest(targetEmail, "UserPass123!"))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("[TS-01] Should register user with single-word name (blank lastName) and dispatch verification email with single name")
+    void shouldRegisterUserWithBlankLastName() throws Exception {
+        String email = "rodrigo-" + UUID.randomUUID() + "@jouletracker.com";
+        var signUpRequest = new SignUpRequest(email, "Joule#Pass-2026", "rodrigo", "");
+
+        mockMvc.perform(post("/api/v1/authentication/sign-up")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signUpRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.firstName").value("rodrigo"))
+                .andExpect(jsonPath("$.lastName").value(""));
+
+        verify(emailService).sendVerificationEmail(eq(EmailAddress.of(email)), eq("rodrigo"), any());
     }
 }
