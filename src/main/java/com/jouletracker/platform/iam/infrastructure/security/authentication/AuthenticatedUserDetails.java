@@ -1,6 +1,7 @@
 package com.jouletracker.platform.iam.infrastructure.security.authentication;
 
 import com.jouletracker.platform.iam.domain.model.aggregates.User;
+import com.jouletracker.platform.iam.domain.model.valueobjects.UserStatus;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
@@ -13,6 +14,9 @@ import java.util.UUID;
 
 /**
  * Spring Security {@link UserDetails} adapter wrapping the IAM {@link User} domain aggregate.
+ *
+ * <p>Reflects email verification, soft-deactivation, and moderation bans/suspensions so
+ * Spring Security immediately blocks inactive or restricted accounts.</p>
  */
 @NullMarked
 public class AuthenticatedUserDetails implements UserDetails {
@@ -21,13 +25,17 @@ public class AuthenticatedUserDetails implements UserDetails {
     private final String username;
     private final String password;
     private final boolean enabled;
+    private final boolean accountNonLocked;
+    private final UserStatus status;
     private final List<GrantedAuthority> authorities;
 
     public AuthenticatedUserDetails(User user) {
         this.id = user.getId().value();
         this.username = user.getEmail().value();
         this.password = user.getPasswordHash().value();
-        this.enabled = user.isEmailVerified();
+        this.status = user.getStatus();
+        this.enabled = user.canAuthenticate();
+        this.accountNonLocked = !user.isRestricted();
         this.authorities = user.getRoles().stream()
                 .map(role -> (GrantedAuthority) new SimpleGrantedAuthority(role.name()))
                 .toList();
@@ -35,6 +43,10 @@ public class AuthenticatedUserDetails implements UserDetails {
 
     public @Nullable UUID getId() {
         return id;
+    }
+
+    public UserStatus getStatus() {
+        return status;
     }
 
     @Override
@@ -59,7 +71,7 @@ public class AuthenticatedUserDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return accountNonLocked;
     }
 
     @Override
