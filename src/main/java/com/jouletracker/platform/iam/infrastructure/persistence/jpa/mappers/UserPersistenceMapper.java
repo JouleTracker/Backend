@@ -50,6 +50,7 @@ public class UserPersistenceMapper {
                 entity.getLastName(),
                 entity.getStatus(),
                 entity.isEmailVerified(),
+                entity.getDeactivatedAt(),
                 roles
         );
     }
@@ -71,7 +72,8 @@ public class UserPersistenceMapper {
                 user.getLastName(),
                 null,
                 user.getStatus(),
-                user.isEmailVerified()
+                user.isEmailVerified(),
+                user.getDeactivatedAt()
         );
 
         assignRolesToEntity(entity, user.getRoles());
@@ -91,6 +93,7 @@ public class UserPersistenceMapper {
         entity.setLastName(user.getLastName());
         entity.setStatus(user.getStatus());
         entity.setEmailVerified(user.isEmailVerified());
+        entity.setDeactivatedAt(user.getDeactivatedAt());
 
         Set<String> targetDbRoleNames = user.getRoles().stream()
                 .map(Role::toDbName)

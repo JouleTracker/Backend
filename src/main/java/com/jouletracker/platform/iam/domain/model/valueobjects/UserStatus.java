@@ -15,12 +15,17 @@ public enum UserStatus {
     ACTIVE,
 
     /**
-     * Suspended user account.
+     * Temporarily suspended user account blocked by moderation.
      */
     SUSPENDED,
 
     /**
-     * Inactive or closed account.
+     * Permanently banned user account blocked from accessing the platform.
+     */
+    BANNED,
+
+    /**
+     * Soft-deactivated or closed user account.
      */
     INACTIVE
 }
