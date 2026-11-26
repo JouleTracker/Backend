@@ -33,6 +33,7 @@ public final class UserResourceAssembler {
                 result.email(),
                 result.firstName(),
                 result.lastName(),
+                result.phone(),
                 roles,
                 result.emailVerified()
         );

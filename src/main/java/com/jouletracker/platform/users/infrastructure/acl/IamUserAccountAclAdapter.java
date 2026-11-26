@@ -11,6 +11,7 @@ import com.jouletracker.platform.users.domain.model.valueobjects.AccountModerati
 import com.jouletracker.platform.users.domain.model.valueobjects.ManagedUserSnapshot;
 import com.jouletracker.platform.users.domain.services.ManagedUserAccountPort;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,6 +68,15 @@ public class IamUserAccountAclAdapter implements ManagedUserAccountPort {
 
     @Override
     @Transactional
+    public ManagedUserSnapshot updateProfile(Long userId, String firstName, String lastName, @Nullable String phone) {
+        User user = requireUser(userId);
+        user.updateProfile(firstName, lastName, phone);
+        User savedUser = userRepository.save(user);
+        return toSnapshot(savedUser);
+    }
+
+    @Override
+    @Transactional
     public ManagedUserSnapshot deactivateAccount(Long userId, Instant deactivatedAt) {
         User user = requireUser(userId);
         user.deactivate(deactivatedAt);
@@ -104,6 +114,7 @@ public class IamUserAccountAclAdapter implements ManagedUserAccountPort {
                 user.getEmail().value(),
                 user.getFirstName(),
                 user.getLastName(),
+                user.getPhone(),
                 roleNames,
                 user.getStatus().name(),
                 user.isEmailVerified(),

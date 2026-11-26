@@ -111,7 +111,8 @@ public class SecurityConfiguration {
                                 "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
-                        // Authenticated user self-service endpoints (US-25, US-40)
+                        // Authenticated user self-service endpoints (TS-12, US-25, US-40)
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/users/*").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/users/*/password").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/users/*/deactivate").authenticated()
                         // Administrative moderation endpoints (US-49)

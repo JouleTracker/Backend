@@ -47,6 +47,7 @@ public class UserPersistenceMapper {
                 PasswordHash.of(entity.getPasswordHash()),
                 entity.getFirstName(),
                 entity.getLastName(),
+                entity.getPhone(),
                 entity.getStatus(),
                 entity.isEmailVerified(),
                 entity.getDeactivatedAt(),
@@ -67,7 +68,7 @@ public class UserPersistenceMapper {
                 user.getPasswordHash().value(),
                 user.getFirstName(),
                 user.getLastName(),
-                null,
+                user.getPhone(),
                 user.getStatus(),
                 user.isEmailVerified(),
                 user.getDeactivatedAt()
@@ -88,6 +89,7 @@ public class UserPersistenceMapper {
         entity.setPasswordHash(user.getPasswordHash().value());
         entity.setFirstName(user.getFirstName());
         entity.setLastName(user.getLastName());
+        entity.setPhone(user.getPhone());
         entity.setStatus(user.getStatus());
         entity.setEmailVerified(user.isEmailVerified());
         entity.setDeactivatedAt(user.getDeactivatedAt());

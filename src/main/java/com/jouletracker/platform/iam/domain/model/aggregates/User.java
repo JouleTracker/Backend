@@ -35,6 +35,7 @@ public class User extends AbstractDomainAggregateRoot<User> {
     private PasswordHash passwordHash;
     private String firstName;
     private String lastName;
+    private @Nullable String phone;
     private UserStatus status;
     private boolean emailVerified;
     private @Nullable Instant deactivatedAt;
@@ -48,6 +49,7 @@ public class User extends AbstractDomainAggregateRoot<User> {
      * @param passwordHash  the user's hashed password
      * @param firstName     the user's first name
      * @param lastName      the user's last name
+     * @param phone         the user's optional contact phone number
      * @param status        the account lifecycle status
      * @param emailVerified whether the user's email address has been verified
      * @param deactivatedAt the timestamp when the account was soft-deactivated, or null
@@ -59,6 +61,7 @@ public class User extends AbstractDomainAggregateRoot<User> {
             PasswordHash passwordHash,
             String firstName,
             @Nullable String lastName,
+            @Nullable String phone,
             UserStatus status,
             boolean emailVerified,
             @Nullable Instant deactivatedAt,
@@ -68,10 +71,27 @@ public class User extends AbstractDomainAggregateRoot<User> {
         this.passwordHash = Objects.requireNonNull(passwordHash, "PasswordHash must not be null");
         this.firstName = validateName(firstName, "First name");
         this.lastName = normalizeOptionalName(lastName);
+        this.phone = normalizePhone(phone);
         this.status = Objects.requireNonNull(status, "UserStatus must not be null");
         this.emailVerified = emailVerified;
         this.deactivatedAt = deactivatedAt;
         this.roles = new HashSet<>(Objects.requireNonNull(roles, "Roles must not be null"));
+    }
+
+    /**
+     * Reconstitution constructor without phone number.
+     */
+    public User(
+            UserId id,
+            EmailAddress email,
+            PasswordHash passwordHash,
+            String firstName,
+            @Nullable String lastName,
+            UserStatus status,
+            boolean emailVerified,
+            @Nullable Instant deactivatedAt,
+            Set<Role> roles) {
+        this(id, email, passwordHash, firstName, lastName, null, status, emailVerified, deactivatedAt, roles);
     }
 
     /**
@@ -166,6 +186,19 @@ public class User extends AbstractDomainAggregateRoot<User> {
         }
         this.id = Objects.requireNonNull(id, "UserId must not be null");
         this.registerDomainEvent(new UserRegisteredEvent(this.id, this.email, this.getFullName()));
+    }
+
+    /**
+     * Updates the user's personal profile details (first name, last name, and optional phone number).
+     *
+     * @param firstName the updated first name (non-blank, max 100 chars)
+     * @param lastName  the updated last name (non-blank, max 100 chars)
+     * @param phone     the updated contact phone number (optional, max 20 chars)
+     */
+    public void updateProfile(String firstName, String lastName, @Nullable String phone) {
+        this.firstName = validateName(firstName, "First name");
+        this.lastName = validateName(lastName, "Last name");
+        this.phone = normalizePhone(phone);
     }
 
     /**
@@ -284,6 +317,23 @@ public class User extends AbstractDomainAggregateRoot<User> {
         if (trimmed.isBlank()) {
             throw new IllegalArgumentException(fieldName + " must not be blank");
         }
+        if (trimmed.length() > 100) {
+            throw new IllegalArgumentException(fieldName + " must not exceed 100 characters");
+        }
+        return trimmed;
+    }
+
+    private static @Nullable String normalizePhone(@Nullable String phone) {
+        if (phone == null) {
+            return null;
+        }
+        String trimmed = phone.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.length() > 20) {
+            throw new IllegalArgumentException("Phone number must not exceed 20 characters");
+        }
         return trimmed;
     }
 
@@ -309,6 +359,10 @@ public class User extends AbstractDomainAggregateRoot<User> {
 
     public String getLastName() {
         return lastName;
+    }
+
+    public @Nullable String getPhone() {
+        return phone;
     }
 
     public UserStatus getStatus() {
