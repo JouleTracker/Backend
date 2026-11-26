@@ -10,11 +10,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.text.MessageFormat;
 import java.util.Map;
@@ -35,7 +38,6 @@ public class GlobalExceptionHandler {
 
     /**
      * Handles validation exceptions from Spring's request body validation.
-     * Maps validation failure to a standardized RFC 9457 ProblemDetail response.
      *
      * @param ex the validation exception from @Valid binding
      * @return error response with BAD_REQUEST status and detailed invalid parameters
@@ -69,6 +71,21 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problemDetail);
+    }
+
+    /**
+     * Handles type mismatch errors such as invalid UUID path variables.
+     *
+     * @param ex the method argument type mismatch exception
+     * @return error response with BAD_REQUEST status
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ProblemDetail> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        var applicationError = ApplicationError.validationError(
+                ex.getName(),
+                "Invalid value for parameter '" + ex.getName() + "'"
+        );
+        return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
     }
 
     /**
@@ -136,8 +153,39 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles Spring Security authorization failures (e.g., {@code @PreAuthorize} denials).
+     *
+     * @param ex the access denied exception
+     * @return error response with FORBIDDEN status
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ProblemDetail> handleAccessDeniedException(AccessDeniedException ex) {
+        var applicationError = ApplicationError.forbidden(
+                ex.getMessage() != null && !ex.getMessage().isBlank()
+                        ? ex.getMessage()
+                        : "You do not have permission to access this resource"
+        );
+        return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
+    }
+
+    /**
+     * Handles Spring Security authentication failures reaching the MVC layer.
+     *
+     * @param ex the authentication exception
+     * @return error response with UNAUTHORIZED status
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ProblemDetail> handleAuthenticationException(AuthenticationException ex) {
+        var applicationError = ApplicationError.unauthorized(
+                ex.getMessage() != null && !ex.getMessage().isBlank()
+                        ? ex.getMessage()
+                        : "Authentication is required to access this resource"
+        );
+        return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
+    }
+
+    /**
      * Handles unexpected runtime exceptions not caught by specific handlers.
-     * Maps to a generic unexpected error response.
      *
      * @param ex the unhandled runtime exception
      * @return error response with INTERNAL_SERVER_ERROR status
@@ -154,7 +202,6 @@ public class GlobalExceptionHandler {
 
     /**
      * Handles all other exceptions not matched by specific handlers.
-     * Provides a final fallback for any unexpected exception type.
      *
      * @param ex the exception
      * @return error response with INTERNAL_SERVER_ERROR status

@@ -110,7 +110,8 @@ public final class ProblemDetailFromApplicationErrorAssembler {
         return switch (errorCode) {
             case "VALIDATION_ERROR" -> "error.validation.message";
             case "UNAUTHORIZED", "INVALID_CREDENTIALS" -> "error.invalid-credentials.message";
-            case "FORBIDDEN", "UNVERIFIED_EMAIL", "EMAIL_NOT_VERIFIED" -> "error.unverified-email.message";
+            case "FORBIDDEN" -> "error.forbidden.message";
+            case "UNVERIFIED_EMAIL", "EMAIL_NOT_VERIFIED" -> "error.unverified-email.message";
             case "BUSINESS_RULE_VIOLATION" -> "error.business-rule.message";
             case "UNEXPECTED_ERROR" -> "error.unexpected.message";
             case String s when s.endsWith("_NOT_FOUND") -> "error.not-found.message";
