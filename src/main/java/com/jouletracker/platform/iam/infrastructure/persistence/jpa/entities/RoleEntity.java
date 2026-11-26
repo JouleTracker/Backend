@@ -8,17 +8,15 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
 /**
- * JPA persistence entity mapped to the {@code roles} table in MySQL.
+ * JPA persistence entity mapped to the PostgreSQL {@code roles} table.
  *
- * <p>Uses explicit UUID mapping with {@link SqlTypes#CHAR} to match MySQL {@code CHAR(36)} columns.</p>
+ * <p>Uses native PostgreSQL {@code uuid} for the primary key.</p>
  */
 @Getter
 @Setter
@@ -33,8 +31,7 @@ import java.util.UUID;
 public class RoleEntity {
 
     @Id
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "id", length = 36, nullable = false)
+    @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
     @Column(name = "name", nullable = false, length = 50, unique = true)

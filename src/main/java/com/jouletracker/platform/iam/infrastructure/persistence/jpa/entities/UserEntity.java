@@ -15,8 +15,6 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -24,10 +22,10 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * JPA persistence entity mapped to the {@code users} table.
+ * JPA persistence entity mapped to the PostgreSQL {@code users} table.
  *
- * <p>Extends {@link AuditableAbstractPersistenceEntity} to inherit auditing fields.
- * Manages identity using UUID mapped to MySQL {@code CHAR(36)}.</p>
+ * <p>Extends {@link AuditableAbstractPersistenceEntity} to inherit auditing timestamps.
+ * Uses native PostgreSQL {@code uuid} for the primary key.</p>
  */
 @Getter
 @Setter
@@ -38,17 +36,17 @@ import java.util.UUID;
                 @UniqueConstraint(name = "uk_users_email", columnNames = "email")
         },
         indexes = {
-                @Index(name = "idx_users_email", columnList = "email")
+                @Index(name = "idx_users_email", columnList = "email"),
+                @Index(name = "idx_users_status", columnList = "status")
         }
 )
 public class UserEntity extends AuditableAbstractPersistenceEntity {
 
     @Id
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "id", length = 36, nullable = false)
+    @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(nullable = false, length = 150)
+    @Column(name = "email", nullable = false, length = 150)
     private String email;
 
     @Column(name = "password_hash", nullable = false, length = 255)
@@ -70,6 +68,9 @@ public class UserEntity extends AuditableAbstractPersistenceEntity {
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified;
 
+    @Column(name = "deactivated_at")
+    private Instant deactivatedAt;
+
     @OneToMany(
             mappedBy = "user",
             cascade = CascadeType.ALL,
@@ -89,7 +90,8 @@ public class UserEntity extends AuditableAbstractPersistenceEntity {
             String lastName,
             String phone,
             UserStatus status,
-            boolean emailVerified) {
+            boolean emailVerified,
+            Instant deactivatedAt) {
         this.id = id;
         this.email = email;
         this.passwordHash = passwordHash;
@@ -98,6 +100,19 @@ public class UserEntity extends AuditableAbstractPersistenceEntity {
         this.phone = phone;
         this.status = status != null ? status : UserStatus.PENDING_VERIFICATION;
         this.emailVerified = emailVerified;
+        this.deactivatedAt = deactivatedAt;
+    }
+
+    public UserEntity(
+            UUID id,
+            String email,
+            String passwordHash,
+            String firstName,
+            String lastName,
+            String phone,
+            UserStatus status,
+            boolean emailVerified) {
+        this(id, email, passwordHash, firstName, lastName, phone, status, emailVerified, null);
     }
 
     public void addRole(RoleEntity role) {

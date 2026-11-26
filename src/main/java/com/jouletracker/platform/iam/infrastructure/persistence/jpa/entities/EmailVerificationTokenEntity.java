@@ -11,18 +11,15 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
 
 /**
- * JPA persistence entity mapped to the database table storing single-use email verification tokens.
+ * JPA persistence entity mapped to the PostgreSQL {@code email_verification_tokens} table.
  *
- * <p>Extends {@link AuditableAbstractPersistenceEntity} to inherit auditing fields.
- * Preserves the autoincremental {@code Long} identifier for token primary key while referencing
- * the user by {@code UUID} mapped to {@code CHAR(36)}.</p>
+ * <p>Extends {@link AuditableAbstractPersistenceEntity} to inherit auditing timestamps.
+ * Uses PostgreSQL identity generation for the primary key and native {@code uuid} for {@code user_id}.</p>
  */
 @Getter
 @Setter
@@ -43,11 +40,10 @@ public class EmailVerificationTokenEntity extends AuditableAbstractPersistenceEn
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 64)
+    @Column(name = "token", nullable = false, length = 64)
     private String token;
 
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "user_id", length = 36, nullable = false)
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
 
     @Column(name = "expires_at", nullable = false)

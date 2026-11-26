@@ -12,18 +12,16 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Intermediate JPA entity mapped to the {@code user_roles} join table.
+ * Intermediate JPA entity mapped to the PostgreSQL {@code user_roles} join table.
  *
- * <p>Explicitly models the composite relationship, surrogate UUID key, and {@code assigned_at}
- * timestamp required by the existing MySQL schema without relying on database defaults.</p>
+ * <p>Explicitly models the composite relationship, native UUID surrogate key,
+ * and {@code assigned_at} timestamp.</p>
  */
 @Getter
 @Setter
@@ -38,8 +36,7 @@ import java.util.UUID;
 public class UserRoleEntity {
 
     @Id
-    @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "id", length = 36, nullable = false)
+    @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
