@@ -30,6 +30,9 @@ public class OpenApiConfiguration {
     @Value("${documentation.application.version}")
     String applicationVersion;
 
+    @Value("${server.port:8081}")
+    String serverPort;
+
     // Methods
 
     /**
@@ -61,7 +64,7 @@ public class OpenApiConfiguration {
         // Add server configurations
         openApi.servers(List.of(
                 new Server()
-                        .url("http://localhost:8080")
+                        .url("http://localhost:" + this.serverPort)
                         .description("Local Development Environment"),
                 new Server()
                         .url("https://staging-api.jouletracker.com")
