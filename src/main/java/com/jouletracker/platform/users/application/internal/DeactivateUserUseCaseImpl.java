@@ -37,7 +37,7 @@ public class DeactivateUserUseCaseImpl implements DeactivateUserUseCase {
     public Result<ManagedUserResult, ApplicationError> handle(DeactivateUserCommand command) {
         if (!command.authenticatedUserId().equals(command.targetUserId())) {
             LOGGER.warn("Account deactivation denied: caller attempted to deactivate another user's account.");
-            return Result.failure(ApplicationError.forbidden("You are only authorized to deactivate your own account"));
+            return Result.failure(ApplicationError.forbidden("Solo tienes autorización para desactivar tu propia cuenta"));
         }
 
         Optional<ManagedUserSnapshot> optionalUser = userAccountPort.findById(command.targetUserId());
@@ -47,10 +47,10 @@ public class DeactivateUserUseCaseImpl implements DeactivateUserUseCase {
 
         ManagedUserSnapshot user = optionalUser.get();
         if (user.isDeactivated()) {
-            return Result.failure(ApplicationError.conflict("User", "Account is already deactivated"));
+            return Result.failure(ApplicationError.conflict("User", "La cuenta ya se encuentra desactivada"));
         }
         if (user.isBanned()) {
-            return Result.failure(ApplicationError.forbidden("Banned accounts cannot be self-deactivated"));
+            return Result.failure(ApplicationError.forbidden("Las cuentas bloqueadas no pueden autodesactivarse"));
         }
 
         ManagedUserSnapshot deactivated = userAccountPort.deactivateAccount(command.targetUserId(), Instant.now());

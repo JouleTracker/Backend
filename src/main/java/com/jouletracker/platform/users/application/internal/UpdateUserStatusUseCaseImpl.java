@@ -46,7 +46,7 @@ public class UpdateUserStatusUseCaseImpl implements UpdateUserStatusUseCase {
         if (command.adminUserId().equals(command.targetUserId())) {
             LOGGER.warn("Admin {} attempted to modify their own account status to {}.", command.adminUserId(), targetStatus);
             return Result.failure(ApplicationError.forbidden(
-                    "Administrators cannot ban, suspend, or modify their own account status"
+                    "Los administradores no pueden bloquear, suspender ni modificar el estado de su propia cuenta"
             ));
         }
 

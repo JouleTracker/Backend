@@ -11,18 +11,18 @@ import org.jspecify.annotations.Nullable;
  * @param status target account status (ACTIVE, SUSPENDED, BANNED, INACTIVE)
  * @param reason optional administrative moderation reason
  */
-@Schema(description = "Request payload for updating a user's account moderation status")
+@Schema(description = "Datos para actualizar el estado de moderación de una cuenta de usuario")
 public record UpdateUserStatusRequest(
         @Schema(
-                description = "Target account status",
+                description = "Estado objetivo de la cuenta",
                 example = "BANNED",
                 allowableValues = {"ACTIVE", "SUSPENDED", "BANNED", "INACTIVE"},
                 requiredMode = Schema.RequiredMode.REQUIRED
         )
-        @NotBlank(message = "Target status is required")
+        @NotBlank(message = "El estado de la cuenta es obligatorio")
         String status,
 
-        @Schema(description = "Optional reason explaining the moderation action", example = "Violation of platform terms of service")
-        @Size(max = 255, message = "Moderation reason must not exceed 255 characters")
+        @Schema(description = "Motivo opcional de la acción de moderación", example = "Incumplimiento de los términos del servicio")
+        @Size(max = 255, message = "El motivo de moderación no debe exceder los 255 caracteres")
         @Nullable String reason) {
 }

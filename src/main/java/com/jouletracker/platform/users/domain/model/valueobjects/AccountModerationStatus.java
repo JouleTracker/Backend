@@ -23,13 +23,13 @@ public enum AccountModerationStatus {
      */
     public static AccountModerationStatus fromString(String rawStatus) {
         if (rawStatus == null || rawStatus.isBlank()) {
-            throw new IllegalArgumentException("Status must not be blank. Allowed values: ACTIVE, SUSPENDED, BANNED, INACTIVE");
+            throw new IllegalArgumentException("El estado no puede estar vacío. Valores permitidos: ACTIVE, SUSPENDED, BANNED, INACTIVE");
         }
         try {
             return AccountModerationStatus.valueOf(rawStatus.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException(
-                    "Invalid user status '" + rawStatus + "'. Allowed values: ACTIVE, SUSPENDED, BANNED, INACTIVE"
+                    "Estado de usuario inválido '" + rawStatus + "'. Valores permitidos: ACTIVE, SUSPENDED, BANNED, INACTIVE"
             );
         }
     }

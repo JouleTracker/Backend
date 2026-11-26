@@ -36,7 +36,7 @@ public class ChangePasswordUseCaseImpl implements ChangePasswordUseCase {
     public Result<String, ApplicationError> handle(ChangePasswordCommand command) {
         if (!command.authenticatedUserId().equals(command.targetUserId())) {
             LOGGER.warn("Password change denied: authenticated user attempted to modify another user's password.");
-            return Result.failure(ApplicationError.forbidden("You are only authorized to change your own password"));
+            return Result.failure(ApplicationError.forbidden("Solo tienes autorización para cambiar tu propia contraseña"));
         }
 
         Optional<ManagedUserSnapshot> optionalUser = userAccountPort.findById(command.targetUserId());
@@ -46,12 +46,12 @@ public class ChangePasswordUseCaseImpl implements ChangePasswordUseCase {
 
         ManagedUserSnapshot user = optionalUser.get();
         if (user.isDeactivated() || user.isRestricted()) {
-            return Result.failure(ApplicationError.forbidden("Account is deactivated or restricted and cannot change its password"));
+            return Result.failure(ApplicationError.forbidden("La cuenta está desactivada o restringida y no puede cambiar su contraseña"));
         }
 
         if (!userAccountPort.verifyPassword(command.targetUserId(), command.currentPassword())) {
             LOGGER.info("Password change rejected: current password verification failed.");
-            return Result.failure(ApplicationError.validationError("currentPassword", "Current password is incorrect"));
+            return Result.failure(ApplicationError.validationError("currentPassword", "La contraseña actual es incorrecta"));
         }
 
         if (!PasswordPolicy.isSatisfiedBy(command.newPassword())) {
@@ -61,12 +61,12 @@ public class ChangePasswordUseCaseImpl implements ChangePasswordUseCase {
         if (command.currentPassword().equals(command.newPassword())) {
             return Result.failure(ApplicationError.validationError(
                     "newPassword",
-                    "New password must be different from the current password"
+                    "La nueva contraseña debe ser diferente a la contraseña actual"
             ));
         }
 
         userAccountPort.updatePassword(command.targetUserId(), command.newPassword());
         LOGGER.info("Password changed successfully for user {}.", command.targetUserId());
-        return Result.success("Password updated successfully.");
+        return Result.success("La contraseña se actualizó correctamente.");
     }
 }
