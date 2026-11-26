@@ -2,6 +2,7 @@ package com.jouletracker.platform.iam.infrastructure.email.brevo;
 
 import com.jouletracker.platform.iam.domain.model.valueobjects.EmailAddress;
 import com.jouletracker.platform.iam.domain.services.EmailService;
+import com.jouletracker.platform.iam.infrastructure.configuration.PasswordResetTokenProperties;
 import com.jouletracker.platform.iam.infrastructure.configuration.VerificationTokenProperties;
 import com.jouletracker.platform.iam.infrastructure.email.brevo.client.BrevoRestClient;
 import com.jouletracker.platform.iam.infrastructure.email.brevo.client.BrevoSendSmtpEmailRequest;
@@ -9,15 +10,17 @@ import com.jouletracker.platform.shared.infrastructure.configuration.Application
 import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Year;
 import java.util.List;
 
 /**
  * Adapter implementing {@link EmailService} using Brevo's transactional email API.
  *
- * <p>Delivery errors are propagated to the application use case so registration is not
- * reported as successful when Brevo rejects or cannot receive the request.</p>
+ * <p>Delivery errors are propagated to the calling application use case so workflows are not
+ * falsely reported as successful when Brevo rejects or cannot receive a request.</p>
  */
 @Service
 @NullMarked
@@ -29,21 +32,39 @@ public class BrevoEmailService implements EmailService {
     private final BrevoProperties properties;
     private final ApplicationProperties applicationProperties;
     private final VerificationTokenProperties verificationTokenProperties;
+    private final PasswordResetTokenProperties passwordResetTokenProperties;
+
+    @Autowired
+    public BrevoEmailService(
+            BrevoRestClient brevoRestClient,
+            BrevoProperties properties,
+            ApplicationProperties applicationProperties,
+            VerificationTokenProperties verificationTokenProperties,
+            PasswordResetTokenProperties passwordResetTokenProperties) {
+        this.brevoRestClient = brevoRestClient;
+        this.properties = properties;
+        this.applicationProperties = applicationProperties;
+        this.verificationTokenProperties = verificationTokenProperties;
+        this.passwordResetTokenProperties = passwordResetTokenProperties;
+    }
 
     public BrevoEmailService(
             BrevoRestClient brevoRestClient,
             BrevoProperties properties,
             ApplicationProperties applicationProperties,
             VerificationTokenProperties verificationTokenProperties) {
-        this.brevoRestClient = brevoRestClient;
-        this.properties = properties;
-        this.applicationProperties = applicationProperties;
-        this.verificationTokenProperties = verificationTokenProperties;
+        this(
+                brevoRestClient,
+                properties,
+                applicationProperties,
+                verificationTokenProperties,
+                new PasswordResetTokenProperties()
+        );
     }
 
     @Override
     public void sendVerificationEmail(EmailAddress recipient, String recipientName, String verificationToken) {
-        String verificationUrl = buildVerificationUrl(verificationToken);
+        String verificationUrl = applicationProperties.buildEmailVerificationUrl(verificationToken);
 
         var sender = new BrevoSendSmtpEmailRequest.Sender(
                 properties.getSenderName(),
@@ -56,7 +77,7 @@ public class BrevoEmailService implements EmailService {
         ));
 
         String subject = "Confirm your JouleTracker account";
-        String htmlContent = buildHtmlContent(recipientName, verificationUrl);
+        String htmlContent = buildVerificationHtmlContent(recipientName, verificationUrl);
 
         var request = new BrevoSendSmtpEmailRequest(sender, to, subject, htmlContent);
 
@@ -64,13 +85,30 @@ public class BrevoEmailService implements EmailService {
         LOGGER.info("Verification email accepted by Brevo.");
     }
 
-    private String buildVerificationUrl(String token) {
-        String base = applicationProperties.getEmailVerificationUrl();
-        String separator = base.contains("?") ? "&" : "?";
-        return base + separator + "token=" + token;
+    @Override
+    public void sendPasswordResetEmail(EmailAddress recipient, String recipientName, String resetToken) {
+        String resetUrl = applicationProperties.buildPasswordResetUrl(resetToken);
+
+        var sender = new BrevoSendSmtpEmailRequest.Sender(
+                properties.getSenderName(),
+                properties.getSenderEmail()
+        );
+
+        var to = List.of(new BrevoSendSmtpEmailRequest.Recipient(
+                recipient.value(),
+                recipientName
+        ));
+
+        String subject = "Reset your JouleTracker password";
+        String htmlContent = buildPasswordResetHtmlContent(recipientName, resetUrl);
+
+        var request = new BrevoSendSmtpEmailRequest(sender, to, subject, htmlContent);
+
+        brevoRestClient.sendTransactionalEmail(request);
+        LOGGER.info("Password reset email accepted by Brevo.");
     }
 
-    private String buildHtmlContent(String recipientName, String verificationUrl) {
+    private String buildVerificationHtmlContent(String recipientName, String verificationUrl) {
         return """
                 <!DOCTYPE html>
                 <html>
@@ -108,6 +146,57 @@ public class BrevoEmailService implements EmailService {
                     </div>
                 </body>
                 </html>
-                """.formatted(recipientName, verificationUrl, verificationTokenProperties.getValidityHours(), String.valueOf(java.time.Year.now().getValue()));
+                """.formatted(
+                recipientName,
+                verificationUrl,
+                verificationTokenProperties.getValidityHours(),
+                String.valueOf(Year.now().getValue())
+        );
+    }
+
+    private String buildPasswordResetHtmlContent(String recipientName, String resetUrl) {
+        return """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Reset Your JouleTracker Password</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 24px; }
+                        .container { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+                        .header { text-align: center; margin-bottom: 24px; }
+                        .title { color: #1a202c; font-size: 22px; font-weight: 700; }
+                        .content { color: #4a5568; line-height: 1.6; font-size: 15px; }
+                        .button-container { text-align: center; margin: 32px 0; }
+                        .button { background-color: #0284c7; color: #ffffff !important; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block; }
+                        .footer { margin-top: 32px; font-size: 13px; color: #718096; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1 class="title">Password Recovery Request</h1>
+                        </div>
+                        <div class="content">
+                            <p>Hello <strong>%s</strong>,</p>
+                            <p>We received a request to reset the password for your JouleTracker account. Click the button below to choose a new password:</p>
+                            <div class="button-container">
+                                <a href="%s" class="button" target="_blank">Reset Password</a>
+                            </div>
+                            <p>This password recovery link is single-use and will expire in <strong>%d minutes</strong>.</p>
+                            <p>If you did not request a password reset, you can safely ignore this email and your password will remain unchanged.</p>
+                        </div>
+                        <div class="footer">
+                            <p>&copy; %s JouleTracker Platform. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """.formatted(
+                recipientName,
+                resetUrl,
+                passwordResetTokenProperties.getValidityMinutes(),
+                String.valueOf(Year.now().getValue())
+        );
     }
 }
