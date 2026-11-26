@@ -8,6 +8,7 @@ import com.jouletracker.platform.iam.infrastructure.email.brevo.client.BrevoRest
 import com.jouletracker.platform.iam.infrastructure.email.brevo.client.BrevoSendSmtpEmailRequest;
 import com.jouletracker.platform.shared.infrastructure.configuration.ApplicationProperties;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +20,9 @@ import java.util.List;
 /**
  * Adapter implementing {@link EmailService} using Brevo's transactional email API.
  *
- * <p>Network or configuration failures on verification emails are logged and handled gracefully
- * so user registration is not blocked when Brevo is unavailable or unconfigured (TS-19).</p>
+ * <p>Delivery errors are logged with non-sensitive diagnostics and propagated to the calling
+ * application use case so workflows are not falsely reported as successful when Brevo rejects
+ * or cannot receive a request.</p>
  */
 @Service
 @NullMarked
@@ -65,12 +67,7 @@ public class BrevoEmailService implements EmailService {
     @Override
     public void sendVerificationEmail(EmailAddress recipient, String recipientName, String verificationToken) {
         String verificationUrl = applicationProperties.buildEmailVerificationUrl(verificationToken);
-
-        if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
-            LOGGER.warn("Brevo API key is not configured. Skipping email delivery. Verification URL for {}: {}",
-                    recipient.value(), verificationUrl);
-            return;
-        }
+        String greetingName = formatGreetingName(recipientName);
 
         var sender = new BrevoSendSmtpEmailRequest.Sender(
                 properties.getSenderName(),
@@ -79,26 +76,21 @@ public class BrevoEmailService implements EmailService {
 
         var to = List.of(new BrevoSendSmtpEmailRequest.Recipient(
                 recipient.value(),
-                recipientName
+                greetingName
         ));
 
         String subject = "Confirm your JouleTracker account";
-        String htmlContent = buildVerificationHtmlContent(recipientName, verificationUrl);
+        String htmlContent = buildVerificationHtmlContent(greetingName, verificationUrl);
 
         var request = new BrevoSendSmtpEmailRequest(sender, to, subject, htmlContent);
 
-        try {
-            brevoRestClient.sendTransactionalEmail(request);
-            LOGGER.info("Verification email accepted by Brevo.");
-        } catch (Exception ex) {
-            LOGGER.error("Failed to send verification email via Brevo for {}. Registration will proceed. Fallback verification URL: {}",
-                    recipient.value(), verificationUrl, ex);
-        }
+        dispatchEmail("verificación de cuenta", recipient, request);
     }
 
     @Override
     public void sendPasswordResetEmail(EmailAddress recipient, String recipientName, String resetToken) {
         String resetUrl = applicationProperties.buildPasswordResetUrl(resetToken);
+        String greetingName = formatGreetingName(recipientName);
 
         var sender = new BrevoSendSmtpEmailRequest.Sender(
                 properties.getSenderName(),
@@ -107,16 +99,97 @@ public class BrevoEmailService implements EmailService {
 
         var to = List.of(new BrevoSendSmtpEmailRequest.Recipient(
                 recipient.value(),
-                recipientName
+                greetingName
         ));
 
         String subject = "Reset your JouleTracker password";
-        String htmlContent = buildPasswordResetHtmlContent(recipientName, resetUrl);
+        String htmlContent = buildPasswordResetHtmlContent(greetingName, resetUrl);
 
         var request = new BrevoSendSmtpEmailRequest(sender, to, subject, htmlContent);
 
-        brevoRestClient.sendTransactionalEmail(request);
-        LOGGER.info("Password reset email accepted by Brevo.");
+        dispatchEmail("recuperación de contraseña", recipient, request);
+    }
+
+    static String formatGreetingName(@Nullable String recipientName) {
+        if (recipientName == null || recipientName.isBlank()) {
+            return "";
+        }
+        String[] tokens = recipientName.trim().split("\\s+");
+        if (tokens.length % 2 == 0) {
+            int half = tokens.length / 2;
+            String firstHalf = String.join(" ", java.util.Arrays.copyOfRange(tokens, 0, half));
+            String secondHalf = String.join(" ", java.util.Arrays.copyOfRange(tokens, half, tokens.length));
+            if (firstHalf.equalsIgnoreCase(secondHalf)) {
+                return firstHalf;
+            }
+        }
+        return String.join(" ", tokens);
+    }
+
+    static String formatGreetingName(@Nullable String firstName, @Nullable String lastName) {
+        String cleanFirst = firstName == null ? "" : firstName.trim();
+        String cleanLast = lastName == null ? "" : lastName.trim();
+        if (cleanFirst.isEmpty()) {
+            return formatGreetingName(cleanLast);
+        }
+        if (cleanLast.isEmpty() || cleanFirst.equalsIgnoreCase(cleanLast)) {
+            return cleanFirst;
+        }
+        return cleanFirst + " " + cleanLast;
+    }
+
+    private void dispatchEmail(String emailType, EmailAddress recipient, BrevoSendSmtpEmailRequest request) {
+        String maskedRecipient = maskEmail(recipient.value());
+        String senderEmail = properties.getSenderEmail();
+        String apiUrl = properties.getApiUrl();
+
+        if (properties.hasMissingApiKey()) {
+            LOGGER.error(
+                    "No se puede enviar correo de {} vía Brevo: BREVO_API_KEY no está configurada o está vacía (destinatario={}, remitente={}, endpoint={}).",
+                    emailType, maskedRecipient, senderEmail, apiUrl
+            );
+        } else if (properties.hasPlaceholderApiKey()) {
+            LOGGER.warn(
+                    "BREVO_API_KEY parece contener un valor de marcador de posición (placeholder); la API de Brevo probablemente rechazará el envío de {} con HTTP 401 (destinatario={}, remitente={}, endpoint={}).",
+                    emailType, maskedRecipient, senderEmail, apiUrl
+            );
+        }
+
+        if (senderEmail == null || senderEmail.isBlank()) {
+            LOGGER.warn(
+                    "BREVO_SENDER_EMAIL está vacía al intentar enviar correo de {} (destinatario={}, endpoint={}).",
+                    emailType, maskedRecipient, apiUrl
+            );
+        }
+
+        LOGGER.info(
+                "Iniciando envío de correo de {} vía Brevo (destinatario={}, remitente={}, endpoint={}).",
+                emailType, maskedRecipient, senderEmail, apiUrl
+        );
+
+        try {
+            brevoRestClient.sendTransactionalEmail(request);
+            LOGGER.info(
+                    "Correo de {} aceptado por Brevo (destinatario={}, remitente={}).",
+                    emailType, maskedRecipient, senderEmail
+            );
+        } catch (RuntimeException ex) {
+            LOGGER.error(
+                    "Fallo al enviar correo de {} vía Brevo (destinatario={}, remitente={}, endpoint={}): {}",
+                    emailType, maskedRecipient, senderEmail, apiUrl, ex.getMessage()
+            );
+            throw ex;
+        }
+    }
+
+    static String maskEmail(String email) {
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 0 || atIndex == email.length() - 1) {
+            return "***";
+        }
+        String local = email.substring(0, atIndex);
+        String domain = email.substring(atIndex);
+        return local.charAt(0) + "***" + domain;
     }
 
     private String buildVerificationHtmlContent(String recipientName, String verificationUrl) {

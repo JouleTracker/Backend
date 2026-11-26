@@ -4,12 +4,27 @@ import jakarta.validation.constraints.Min;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.List;
+import java.util.Locale;
+
 /**
  * Configuration properties for the Brevo transactional email integration.
  */
 @Validated
 @ConfigurationProperties(prefix = "brevo")
 public class BrevoProperties {
+
+    private static final List<String> PLACEHOLDER_MARKERS = List.of(
+            "change_me",
+            "changeme",
+            "placeholder",
+            "your_brevo",
+            "your-brevo",
+            "your_api_key",
+            "your-api-key",
+            "replace_me",
+            "<brevo"
+    );
 
     private String apiKey = "";
     private String senderEmail = "jouletacker@gmail.com";
@@ -68,5 +83,28 @@ public class BrevoProperties {
 
     public void setReadTimeoutSeconds(int readTimeoutSeconds) {
         this.readTimeoutSeconds = readTimeoutSeconds;
+    }
+
+    /**
+     * Checks whether the configured Brevo API key is null or blank.
+     *
+     * @return true if no API key is configured
+     */
+    public boolean hasMissingApiKey() {
+        return apiKey == null || apiKey.isBlank();
+    }
+
+    /**
+     * Checks whether the configured Brevo API key matches a common placeholder pattern
+     * (for example, the default value shipped in {@code .env.example}).
+     *
+     * @return true if the API key looks like an unreplaced placeholder
+     */
+    public boolean hasPlaceholderApiKey() {
+        if (hasMissingApiKey()) {
+            return false;
+        }
+        String normalized = apiKey.trim().toLowerCase(Locale.ROOT);
+        return PLACEHOLDER_MARKERS.stream().anyMatch(normalized::contains);
     }
 }

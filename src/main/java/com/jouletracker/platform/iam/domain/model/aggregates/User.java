@@ -58,7 +58,7 @@ public class User extends AbstractDomainAggregateRoot<User> {
             EmailAddress email,
             PasswordHash passwordHash,
             String firstName,
-            String lastName,
+            @Nullable String lastName,
             UserStatus status,
             boolean emailVerified,
             @Nullable Instant deactivatedAt,
@@ -67,7 +67,7 @@ public class User extends AbstractDomainAggregateRoot<User> {
         this.email = Objects.requireNonNull(email, "EmailAddress must not be null");
         this.passwordHash = Objects.requireNonNull(passwordHash, "PasswordHash must not be null");
         this.firstName = validateName(firstName, "First name");
-        this.lastName = validateName(lastName, "Last name");
+        this.lastName = normalizeOptionalName(lastName);
         this.status = Objects.requireNonNull(status, "UserStatus must not be null");
         this.emailVerified = emailVerified;
         this.deactivatedAt = deactivatedAt;
@@ -82,7 +82,7 @@ public class User extends AbstractDomainAggregateRoot<User> {
             EmailAddress email,
             PasswordHash passwordHash,
             String firstName,
-            String lastName,
+            @Nullable String lastName,
             UserStatus status,
             boolean emailVerified,
             Set<Role> roles) {
@@ -97,7 +97,7 @@ public class User extends AbstractDomainAggregateRoot<User> {
             EmailAddress email,
             PasswordHash passwordHash,
             String firstName,
-            String lastName,
+            @Nullable String lastName,
             Set<Role> roles,
             boolean emailVerified) {
         this(
@@ -119,7 +119,7 @@ public class User extends AbstractDomainAggregateRoot<User> {
      * @param email        the validated email address
      * @param passwordHash the hashed password
      * @param firstName    the user's first name
-     * @param lastName     the user's last name
+     * @param lastName     the user's optional last name
      * @param roles        the initial roles assigned to the user
      * @return a new unpersisted User aggregate root instance
      */
@@ -127,7 +127,7 @@ public class User extends AbstractDomainAggregateRoot<User> {
             EmailAddress email,
             PasswordHash passwordHash,
             String firstName,
-            String lastName,
+            @Nullable String lastName,
             Set<Role> roles) {
         return new User(
                 UserId.empty(),
@@ -272,7 +272,10 @@ public class User extends AbstractDomainAggregateRoot<User> {
     }
 
     public String getFullName() {
-        return (firstName + " " + lastName).trim();
+        if (lastName.isBlank() || firstName.equalsIgnoreCase(lastName)) {
+            return firstName;
+        }
+        return firstName + " " + lastName;
     }
 
     private static String validateName(String name, String fieldName) {
@@ -282,6 +285,10 @@ public class User extends AbstractDomainAggregateRoot<User> {
             throw new IllegalArgumentException(fieldName + " must not be blank");
         }
         return trimmed;
+    }
+
+    private static String normalizeOptionalName(@Nullable String name) {
+        return name == null ? "" : name.trim();
     }
 
     public UserId getId() {

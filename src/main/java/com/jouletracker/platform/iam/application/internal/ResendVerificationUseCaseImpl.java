@@ -74,7 +74,7 @@ public class ResendVerificationUseCaseImpl implements ResendVerificationUseCase 
         Optional<User> optionalUser = userRepository.findByEmail(emailAddress);
         if (optionalUser.isEmpty()) {
             LOGGER.info("Resend verification rejected: account was not found.");
-            return Result.failure(ApplicationError.notFound("User", "No account found for the provided email address"));
+            return Result.failure(ApplicationError.notFound("User", "No se encontró ninguna cuenta asociada al correo electrónico proporcionado"));
         }
 
         User user = optionalUser.get();
@@ -83,14 +83,14 @@ public class ResendVerificationUseCaseImpl implements ResendVerificationUseCase 
             LOGGER.info("Resend verification rejected: account email is already verified.");
             return Result.failure(ApplicationError.conflict(
                     "EmailVerification",
-                    "Account email address is already verified"
+                    "El correo electrónico de la cuenta ya está verificado"
             ));
         }
 
         if (user.isDeactivated() || user.isRestricted()) {
             LOGGER.info("Resend verification rejected: account is deactivated or restricted.");
             return Result.failure(ApplicationError.forbidden(
-                    "Cannot resend verification email for a deactivated or restricted account"
+                    "No se puede reenviar el correo de verificación a una cuenta desactivada o restringida"
             ));
         }
 
@@ -116,6 +116,6 @@ public class ResendVerificationUseCaseImpl implements ResendVerificationUseCase 
         );
 
         LOGGER.info("New verification token generated and email dispatched.");
-        return Result.success("Verification email has been resent successfully.");
+        return Result.success("El correo de verificación ha sido reenviado correctamente.");
     }
 }

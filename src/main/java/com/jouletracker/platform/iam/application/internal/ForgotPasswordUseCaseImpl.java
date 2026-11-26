@@ -34,7 +34,7 @@ public class ForgotPasswordUseCaseImpl implements ForgotPasswordUseCase {
     private static final Logger LOGGER = LoggerFactory.getLogger(ForgotPasswordUseCaseImpl.class);
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String GENERIC_SUCCESS_MESSAGE =
-            "If an account exists for the provided email address, a password recovery link has been sent.";
+            "Si existe una cuenta asociada al correo electrónico proporcionado, se ha enviado un enlace de recuperación de contraseña.";
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;

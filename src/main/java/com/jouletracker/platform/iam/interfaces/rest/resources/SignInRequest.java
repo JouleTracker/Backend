@@ -7,14 +7,14 @@ import jakarta.validation.constraints.NotBlank;
 /**
  * Request payload for user sign-in authentication (POST /api/v1/authentication/sign-in).
  */
-@Schema(description = "User authentication credentials")
+@Schema(description = "Credenciales de autenticación del usuario")
 public record SignInRequest(
-        @Schema(description = "Registered email address", example = "john.doe@jouletracker.com")
-        @NotBlank(message = "{validation.not-blank}")
-        @Email(message = "{validation.email}")
+        @Schema(description = "Correo electrónico registrado", example = "john.doe@jouletracker.com")
+        @NotBlank(message = "El correo electrónico es obligatorio")
+        @Email(message = "El correo electrónico debe tener un formato válido")
         String email,
 
-        @Schema(description = "User password", example = "SecurePass123!")
-        @NotBlank(message = "{validation.not-blank}")
+        @Schema(description = "Contraseña del usuario", example = "SecurePass123!")
+        @NotBlank(message = "La contraseña es obligatoria")
         String password) {
 }

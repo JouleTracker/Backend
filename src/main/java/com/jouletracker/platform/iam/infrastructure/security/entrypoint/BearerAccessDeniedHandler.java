@@ -39,7 +39,7 @@ public class BearerAccessDeniedHandler implements AccessDeniedHandler {
             HttpServletResponse response,
             AccessDeniedException accessDeniedException) throws IOException {
         var applicationError = ApplicationError.forbidden(
-                "You do not have sufficient privileges to access this resource"
+                "No tienes permisos suficientes para acceder a este recurso"
         );
 
         var problemDetail = ProblemDetailFromApplicationErrorAssembler

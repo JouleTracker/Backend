@@ -20,11 +20,12 @@ public final class SignUpCommandFromResourceAssembler {
      * @return the assembled SignUpCommand
      */
     public static SignUpCommand toCommandFromResource(SignUpRequest resource) {
+        String normalizedLastName = resource.lastName() != null ? resource.lastName().trim() : "";
         return new SignUpCommand(
                 resource.email(),
                 resource.password(),
                 resource.firstName(),
-                resource.lastName()
+                normalizedLastName
         );
     }
 }

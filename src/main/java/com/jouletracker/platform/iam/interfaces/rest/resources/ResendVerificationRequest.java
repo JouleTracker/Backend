@@ -9,10 +9,10 @@ import jakarta.validation.constraints.NotBlank;
  *
  * @param email the unverified account email address
  */
-@Schema(description = "Request payload to resend an email verification link")
+@Schema(description = "Datos para reenviar el enlace de verificación de correo")
 public record ResendVerificationRequest(
-        @Schema(description = "Unverified account email address", example = "john.doe@jouletracker.com", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "Email address is required")
-        @Email(message = "Must be a valid email address")
+        @Schema(description = "Correo electrónico de la cuenta no verificada", example = "john.doe@jouletracker.com", requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotBlank(message = "El correo electrónico es obligatorio")
+        @Email(message = "El correo electrónico debe tener un formato válido")
         String email) {
 }

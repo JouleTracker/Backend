@@ -79,7 +79,7 @@ public class SignUpUseCaseImpl implements SignUpUseCase {
 
         if (userRepository.existsByEmail(emailAddress)) {
             LOGGER.info("Registration attempt rejected: email address is already in use.");
-            return Result.failure(ApplicationError.conflict("User", "Email address is already in use"));
+            return Result.failure(ApplicationError.conflict("User", "El correo electrónico ya está en uso"));
         }
 
         if (!PasswordPolicy.isSatisfiedBy(command.rawPassword())) {

@@ -46,7 +46,7 @@ public class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
     @Transactional
     public Result<String, ApplicationError> handle(ResetPasswordCommand command) {
         if (command.token().isBlank()) {
-            return Result.failure(ApplicationError.validationError("token", "Password reset token must not be blank"));
+            return Result.failure(ApplicationError.validationError("token", "El token de recuperación de contraseña no puede estar vacío"));
         }
 
         if (!PasswordPolicy.isSatisfiedBy(command.newPassword())) {
@@ -56,7 +56,7 @@ public class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
         Optional<PasswordResetToken> optionalToken = tokenRepository.findByToken(command.token());
         if (optionalToken.isEmpty()) {
             LOGGER.info("Password reset failed: recovery token was not found.");
-            return Result.failure(ApplicationError.notFound("PasswordResetToken", "Provided password reset token was not found"));
+            return Result.failure(ApplicationError.notFound("PasswordResetToken", "No se encontró el token de recuperación de contraseña proporcionado"));
         }
 
         PasswordResetToken resetToken = optionalToken.get();
@@ -64,7 +64,7 @@ public class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
             LOGGER.info("Password reset rejected: recovery token is expired or already used.");
             return Result.failure(ApplicationError.businessRuleViolation(
                     "PASSWORD_RESET_TOKEN_EXPIRED",
-                    "Password reset token has expired or has already been used"
+                    "El token de recuperación de contraseña ha expirado o ya fue utilizado"
             ));
         }
 
@@ -77,7 +77,7 @@ public class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
         User user = optionalUser.get();
         if (user.isDeactivated() || user.isRestricted()) {
             LOGGER.info("Password reset rejected: target account is deactivated or restricted.");
-            return Result.failure(ApplicationError.forbidden("Account is deactivated or restricted and cannot reset its password"));
+            return Result.failure(ApplicationError.forbidden("La cuenta está desactivada o restringida y no puede restablecer su contraseña"));
         }
 
         PasswordHash newHash = passwordHashingService.hash(command.newPassword());
@@ -88,6 +88,6 @@ public class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
         tokenRepository.save(resetToken);
 
         LOGGER.info("User password reset completed successfully.");
-        return Result.success("Password has been reset successfully.");
+        return Result.success("La contraseña ha sido restablecida correctamente.");
     }
 }

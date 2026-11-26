@@ -76,12 +76,12 @@ public final class ProblemDetailFromApplicationErrorAssembler {
 
     private static String toProblemTitle(String errorCode, HttpStatusCode status) {
         return switch (errorCode) {
-            case "VALIDATION_ERROR" -> "Validation Error";
-            case "UNAUTHORIZED", "INVALID_CREDENTIALS" -> "Unauthorized";
-            case "FORBIDDEN", "UNVERIFIED_EMAIL", "EMAIL_NOT_VERIFIED" -> "Forbidden";
-            case "BUSINESS_RULE_VIOLATION" -> "Business Rule Violation";
-            case String s when s.endsWith("_NOT_FOUND") -> "Resource Not Found";
-            case String s when s.endsWith("_CONFLICT") -> "Resource Conflict";
+            case "VALIDATION_ERROR" -> toLocalizedMessageWithFallback("error.title.validation", "Error de validación");
+            case "UNAUTHORIZED", "INVALID_CREDENTIALS" -> toLocalizedMessageWithFallback("error.title.unauthorized", "No autorizado");
+            case "FORBIDDEN", "UNVERIFIED_EMAIL", "EMAIL_NOT_VERIFIED" -> toLocalizedMessageWithFallback("error.title.forbidden", "Acceso denegado");
+            case "BUSINESS_RULE_VIOLATION" -> toLocalizedMessageWithFallback("error.title.business-rule", "Violación de regla de negocio");
+            case String s when s.endsWith("_NOT_FOUND") -> toLocalizedMessageWithFallback("error.title.not-found", "Recurso no encontrado");
+            case String s when s.endsWith("_CONFLICT") -> toLocalizedMessageWithFallback("error.title.conflict", "Conflicto de recurso");
             default -> status instanceof HttpStatus httpStatus ? httpStatus.getReasonPhrase() : "Error";
         };
     }

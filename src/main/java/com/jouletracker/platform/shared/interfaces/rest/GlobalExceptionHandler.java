@@ -45,9 +45,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ProblemDetail> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
         var fieldErrors = ex.getBindingResult().getFieldErrors();
-        var validationPrefix = resolveMessageOrDefault("validation.field.prefix", "Field");
+        var validationPrefix = resolveMessageOrDefault("validation.field.prefix", "Campo");
         var errorDetails = fieldErrors.isEmpty()
-                ? resolveMessageOrDefault("validation.request.failed", "Request validation failed")
+                ? resolveMessageOrDefault("validation.request.failed", "Error de validación en la solicitud")
                 : fieldErrors.stream()
                 .map(error -> "%s %s: %s".formatted(
                         validationPrefix,
@@ -55,12 +55,12 @@ public class GlobalExceptionHandler {
                         error.getDefaultMessage()
                 ))
                 .reduce((a, b) -> a + "; " + b)
-                .orElse(resolveMessageOrDefault("validation.request.failed", "Request validation failed"));
+                .orElse(resolveMessageOrDefault("validation.request.failed", "Error de validación en la solicitud"));
 
         var invalidParams = fieldErrors.stream()
                 .map(err -> Map.of(
                         "field", err.getField(),
-                        "message", err.getDefaultMessage() != null ? err.getDefaultMessage() : "Invalid value"
+                        "message", err.getDefaultMessage() != null ? err.getDefaultMessage() : "Valor inválido"
                 ))
                 .toList();
 
@@ -83,7 +83,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ProblemDetail> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex) {
         var applicationError = ApplicationError.validationError(
                 ex.getName(),
-                "Invalid value for parameter '" + ex.getName() + "'"
+                "Valor inválido para el parámetro '" + ex.getName() + "'"
         );
         return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
     }
@@ -98,7 +98,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ProblemDetail> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         var applicationError = ApplicationError.validationError(
                 "request-body",
-                resolveMessageOrDefault("validation.request.malformed", "Request body is missing or malformed JSON")
+                resolveMessageOrDefault("validation.request.malformed", "El cuerpo de la solicitud falta o tiene un formato JSON inválido")
         );
         return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
     }
@@ -113,7 +113,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ProblemDetail> handleHttpMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
         var applicationError = ApplicationError.validationError(
                 "Content-Type",
-                resolveMessageOrDefault("validation.request.media-type", "Request body must be sent with Content-Type: application/json")
+                resolveMessageOrDefault("validation.request.media-type", "El cuerpo de la solicitud debe enviarse con Content-Type: application/json")
         );
         return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
     }
@@ -130,7 +130,7 @@ public class GlobalExceptionHandler {
                 ex.getParameterName(),
                 resolveMessageOrDefault(
                         "validation.parameter.missing",
-                        "Required request parameter '" + ex.getParameterName() + "' is missing",
+                        "Falta el parámetro obligatorio '" + ex.getParameterName() + "'",
                         ex.getParameterName()
                 )
         );
@@ -146,8 +146,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ProblemDetail> handleIllegalArgumentException(IllegalArgumentException ex) {
         var applicationError = ApplicationError.validationError(
-                resolveMessageOrDefault("validation.request.argument", "request-argument"),
-                ex.getMessage() != null ? ex.getMessage() : resolveMessageOrDefault("validation.request.failed", "Request validation failed")
+                resolveMessageOrDefault("validation.request.argument", "argumento-de-solicitud"),
+                ex.getMessage() != null ? ex.getMessage() : resolveMessageOrDefault("validation.request.failed", "Error de validación en la solicitud")
         );
         return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
     }
@@ -163,7 +163,7 @@ public class GlobalExceptionHandler {
         var applicationError = ApplicationError.forbidden(
                 ex.getMessage() != null && !ex.getMessage().isBlank()
                         ? ex.getMessage()
-                        : "You do not have permission to access this resource"
+                        : "No tienes permisos para acceder a este recurso"
         );
         return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
     }
@@ -179,7 +179,7 @@ public class GlobalExceptionHandler {
         var applicationError = ApplicationError.unauthorized(
                 ex.getMessage() != null && !ex.getMessage().isBlank()
                         ? ex.getMessage()
-                        : "Authentication is required to access this resource"
+                        : "Se requiere autenticación para acceder a este recurso"
         );
         return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
     }
@@ -194,8 +194,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ProblemDetail> handleRuntimeException(RuntimeException ex) {
         LOGGER.error("Unhandled runtime exception caught by GlobalExceptionHandler", ex);
         var applicationError = ApplicationError.unexpected(
-                resolveMessageOrDefault("error.unexpected.context", "global-exception-handler"),
-                "An unexpected error occurred"
+                resolveMessageOrDefault("error.unexpected.context", "manejador-global-de-excepciones"),
+                "Ocurrió un error inesperado"
         );
         return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
     }
@@ -210,8 +210,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ProblemDetail> handleException(Exception ex) {
         LOGGER.error("Unhandled exception caught by GlobalExceptionHandler", ex);
         var applicationError = ApplicationError.unexpected(
-                resolveMessageOrDefault("error.unexpected.context", "global-exception-handler"),
-                "An unexpected error occurred"
+                resolveMessageOrDefault("error.unexpected.context", "manejador-global-de-excepciones"),
+                "Ocurrió un error inesperado"
         );
         return ProblemDetailFromApplicationErrorAssembler.toResponseFromApplicationError(applicationError);
     }

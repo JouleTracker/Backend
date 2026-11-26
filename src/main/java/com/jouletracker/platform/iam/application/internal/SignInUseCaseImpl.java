@@ -28,7 +28,7 @@ import java.util.Optional;
 public class SignInUseCaseImpl implements SignInUseCase {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignInUseCaseImpl.class);
-    private static final String INVALID_CREDENTIALS_MSG = "Invalid email or password";
+    private static final String INVALID_CREDENTIALS_MSG = "Correo electrónico o contraseña inválidos";
 
     private final UserRepository userRepository;
     private final PasswordHashingService passwordHashingService;
@@ -70,14 +70,14 @@ public class SignInUseCaseImpl implements SignInUseCase {
         if (user.isDeactivated()) {
             LOGGER.info("Authentication rejected: user account has been deactivated.");
             return Result.failure(ApplicationError.forbidden(
-                    "Account has been deactivated. Please contact support to reactivate your account."
+                    "La cuenta ha sido desactivada. Por favor, contacta a soporte para reactivar tu cuenta."
             ));
         }
 
         if (user.isRestricted()) {
             LOGGER.info("Authentication rejected: user account is suspended or banned.");
             return Result.failure(ApplicationError.forbidden(
-                    "Account has been suspended or banned. Please contact support."
+                    "La cuenta ha sido suspendida o bloqueada. Por favor, contacta a soporte."
             ));
         }
 
@@ -85,8 +85,8 @@ public class SignInUseCaseImpl implements SignInUseCase {
             LOGGER.info("Authentication rejected: account email has not been confirmed.");
             return Result.failure(new ApplicationError(
                     "UNVERIFIED_EMAIL",
-                    "Forbidden: Account email has not been verified",
-                    "Account email has not been verified. Please check your inbox."
+                    "Acceso denegado: El correo electrónico de la cuenta no ha sido verificado",
+                    "El correo electrónico de la cuenta no ha sido verificado. Por favor, revisa tu bandeja de entrada."
             ));
         }
 
