@@ -2,6 +2,7 @@ package com.jouletracker.platform.alerts.application.queryservices;
 
 import com.jouletracker.platform.alerts.domain.model.aggregates.Alert;
 import com.jouletracker.platform.alerts.domain.model.entities.AlertSummary;
+import com.jouletracker.platform.alerts.domain.model.queries.GetActiveAlertsByUserIdQuery;
 import com.jouletracker.platform.alerts.domain.model.queries.GetAlertSummaryByUserIdQuery;
 import com.jouletracker.platform.alerts.domain.model.queries.GetAlertsByUserIdQuery;
 
@@ -12,5 +13,6 @@ import java.util.List;
  */
 public interface AlertQueryService {
     List<Alert> handle(GetAlertsByUserIdQuery query);
+    List<Alert> handle(GetActiveAlertsByUserIdQuery query);
     AlertSummary handle(GetAlertSummaryByUserIdQuery query);
 }

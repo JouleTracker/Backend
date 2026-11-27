@@ -2,7 +2,9 @@ package com.jouletracker.platform.alerts.interfaces.rest;
 
 import com.jouletracker.platform.alerts.application.commandservices.AlertCommandService;
 import com.jouletracker.platform.alerts.application.queryservices.AlertQueryService;
+import com.jouletracker.platform.alerts.domain.model.aggregates.Alert;
 import com.jouletracker.platform.alerts.domain.model.commands.MarkAlertAsReadCommand;
+import com.jouletracker.platform.alerts.domain.model.queries.GetActiveAlertsByUserIdQuery;
 import com.jouletracker.platform.alerts.domain.model.queries.GetAlertsByUserIdQuery;
 import com.jouletracker.platform.alerts.interfaces.rest.resources.AlertResource;
 import com.jouletracker.platform.alerts.interfaces.rest.transform.AlertResourceAssembler;
@@ -24,7 +26,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * REST controller exposing consumption alert evaluation and acknowledgement endpoints (TS-14).
+ * REST controller exposing consumption alert evaluation and acknowledgement endpoints (TS-14, US-27).
  */
 @RestController
 @RequestMapping(value = {"/api/v1/alerts", "/alerts"}, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -41,21 +43,48 @@ public class AlertsController {
     }
 
     /**
-     * Evaluates active threshold breaches and returns all alerts for the specified user (TS-14).
+     * Evaluates active threshold breaches and returns alerts for the specified user (TS-14, US-27).
      */
     @GetMapping
     @Operation(
             summary = "Get user alerts",
-            description = "Evaluates current sensor and device consumption limits and returns all consumption alerts for the user (TS-14)."
+            description = "Evaluates current sensor and device consumption limits and returns consumption alerts for the user (TS-14, US-27)."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Alerts retrieved successfully",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = AlertResource.class))))
     })
     public ResponseEntity<List<AlertResource>> getAlerts(
+            @RequestParam(required = false, defaultValue = "1") Long userId,
+            @RequestParam(required = false) Boolean activeOnly,
+            @RequestParam(required = false) String severity) {
+
+        List<Alert> alerts = (Boolean.TRUE.equals(activeOnly) || (severity != null && !severity.isBlank()))
+                ? alertQueryService.handle(new GetActiveAlertsByUserIdQuery(userId, severity))
+                : alertQueryService.handle(new GetAlertsByUserIdQuery(userId));
+
+        var resources = alerts.stream()
+                .map(AlertResourceAssembler::toResourceFromEntity)
+                .toList();
+        return ResponseEntity.ok(resources);
+    }
+
+    /**
+     * Returns active critical overload alerts for prominent overload banners (US-27).
+     */
+    @GetMapping("/critical")
+    @Operation(
+            summary = "Get active critical alerts",
+            description = "Returns unread CRITICAL alerts for overload banners in /sensores and /consumo (US-27)."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Critical alerts retrieved successfully",
+                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = AlertResource.class))))
+    })
+    public ResponseEntity<List<AlertResource>> getActiveCriticalAlerts(
             @RequestParam(required = false, defaultValue = "1") Long userId) {
 
-        var alerts = alertQueryService.handle(new GetAlertsByUserIdQuery(userId));
+        var alerts = alertQueryService.handle(new GetActiveAlertsByUserIdQuery(userId, "critical"));
         var resources = alerts.stream()
                 .map(AlertResourceAssembler::toResourceFromEntity)
                 .toList();

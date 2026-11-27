@@ -4,8 +4,10 @@ import com.jouletracker.platform.alerts.application.commandservices.AlertCommand
 import com.jouletracker.platform.alerts.application.queryservices.AlertQueryService;
 import com.jouletracker.platform.alerts.domain.model.aggregates.Alert;
 import com.jouletracker.platform.alerts.domain.model.entities.AlertSummary;
+import com.jouletracker.platform.alerts.domain.model.queries.GetActiveAlertsByUserIdQuery;
 import com.jouletracker.platform.alerts.domain.model.queries.GetAlertSummaryByUserIdQuery;
 import com.jouletracker.platform.alerts.domain.model.queries.GetAlertsByUserIdQuery;
+import com.jouletracker.platform.alerts.domain.model.valueobjects.AlertSeverity;
 import com.jouletracker.platform.alerts.domain.repositories.AlertRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,20 @@ public class AlertQueryServiceImpl implements AlertQueryService {
         Long resolvedUserId = (query != null && query.userId() != null) ? query.userId() : 1L;
         alertCommandService.evaluateUserSensors(resolvedUserId);
         return alertRepository.findAllByUserIdOrderByCreatedAtDesc(resolvedUserId);
+    }
+
+    @Override
+    public List<Alert> handle(GetActiveAlertsByUserIdQuery query) {
+        Long resolvedUserId = (query != null && query.userId() != null) ? query.userId() : 1L;
+        alertCommandService.evaluateUserSensors(resolvedUserId);
+        AlertSeverity filterSeverity = (query != null && query.severity() != null && !query.severity().isBlank())
+                ? AlertSeverity.fromString(query.severity())
+                : null;
+
+        return alertRepository.findAllByUserIdOrderByCreatedAtDesc(resolvedUserId).stream()
+                .filter(alert -> !alert.isRead())
+                .filter(alert -> filterSeverity == null || alert.getSeverity() == filterSeverity)
+                .toList();
     }
 
     @Override
