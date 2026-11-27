@@ -93,18 +93,18 @@ public class AlertCommandServiceImpl implements AlertCommandService {
                 AlertSeverity severity = todayKwh >= dailyLimit * CRITICAL_EXCESS_RATIO
                         ? AlertSeverity.CRITICAL
                         : AlertSeverity.WARNING;
-                String title = "Límite diario superado: " + sensorDisplayName;
+                String title = "Daily limit exceeded: " + sensorDisplayName;
                 String description = String.format(
                         Locale.US,
-                        "El dispositivo %s consumió %.2f kWh hoy (límite sugerido: %.2f kWh/día).",
+                        "Device %s consumed %.2f kWh today (recommended limit: %.2f kWh/day).",
                         deviceDisplayName, todayKwh, dailyLimit
                 );
                 saveIfNotDuplicate(snapshot, title, description, severity).ifPresent(created::add);
             } else if (todayKwh >= dailyLimit * PREVENTIVE_THRESHOLD_RATIO) {
-                String title = "Advertencia preventiva de consumo: " + sensorDisplayName;
+                String title = "Preventive consumption warning: " + sensorDisplayName;
                 String description = String.format(
                         Locale.US,
-                        "El dispositivo %s alcanzó %.2f kWh de %.2f kWh diarios recomendados.",
+                        "Device %s reached %.2f kWh of %.2f kWh recommended daily.",
                         deviceDisplayName, todayKwh, dailyLimit
                 );
                 saveIfNotDuplicate(snapshot, title, description, AlertSeverity.INFO).ifPresent(created::add);
@@ -117,10 +117,10 @@ public class AlertCommandServiceImpl implements AlertCommandService {
         Double powerLimitKw = snapshot.devicePowerLimitKw();
 
         if (powerLimitKw != null && powerLimitKw > 0 && effectivePowerKw > powerLimitKw) {
-            String title = "Exceso de potencia detectado: " + deviceDisplayName;
+            String title = "Power excess detected: " + deviceDisplayName;
             String description = String.format(
                     Locale.US,
-                    "Potencia instantánea de %.2f kW supera el límite configurado de %.2f kW.",
+                    "Instantaneous power of %.2f kW exceeds the configured limit of %.2f kW.",
                     effectivePowerKw, powerLimitKw
             );
             saveIfNotDuplicate(snapshot, title, description, AlertSeverity.CRITICAL).ifPresent(created::add);

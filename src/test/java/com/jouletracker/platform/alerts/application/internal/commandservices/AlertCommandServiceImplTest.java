@@ -56,7 +56,7 @@ class AlertCommandServiceImplTest {
 
         assertEquals(1, alerts.size());
         assertEquals(AlertSeverity.WARNING, alerts.get(0).getSeverity());
-        assertTrue(alerts.get(0).getTitle().contains("Límite diario superado"));
+        assertTrue(alerts.get(0).getTitle().contains("Daily limit exceeded"));
         assertFalse(alerts.get(0).isRead());
     }
 
@@ -76,7 +76,7 @@ class AlertCommandServiceImplTest {
 
         assertEquals(1, alerts.size());
         assertEquals(AlertSeverity.INFO, alerts.get(0).getSeverity());
-        assertTrue(alerts.get(0).getTitle().contains("Advertencia preventiva"));
+        assertTrue(alerts.get(0).getTitle().contains("Preventive consumption warning"));
     }
 
     @Test
@@ -95,7 +95,7 @@ class AlertCommandServiceImplTest {
 
         assertEquals(1, alerts.size());
         assertEquals(AlertSeverity.CRITICAL, alerts.get(0).getSeverity());
-        assertTrue(alerts.get(0).getTitle().contains("Exceso de potencia detectado"));
+        assertTrue(alerts.get(0).getTitle().contains("Power excess detected"));
     }
 
     @Test
@@ -117,8 +117,8 @@ class AlertCommandServiceImplTest {
     @Test
     void markAlertAsReadShouldUpdateStatusAndReturnSuccess() {
         Alert existing = new Alert(
-                15L, 1L, 10L, 5L, "Límite diario superado: Sensor Cocina",
-                "Exceso detectado", AlertSeverity.WARNING, "/dispositivos",
+                15L, 1L, 10L, 5L, "Daily limit exceeded: Sensor Cocina",
+                "Excess detected", AlertSeverity.WARNING, "/dispositivos",
                 false, AlertStatus.ACTIVE, LocalDateTime.now()
         );
         when(alertRepository.findById(15L)).thenReturn(Optional.of(existing));
