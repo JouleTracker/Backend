@@ -5,6 +5,7 @@ import com.jouletracker.platform.iam.domain.model.valueobjects.Role;
 import com.jouletracker.platform.iam.domain.model.valueobjects.UserId;
 import com.jouletracker.platform.iam.domain.repositories.UserRepository;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -59,5 +60,23 @@ public class IamContextFacade {
         return userRepository.findById(UserId.of(userId))
                 .map(user -> user.getRoles().contains(role))
                 .orElse(false);
+    }
+
+    /**
+     * Fetches the contact details (email and full name) for a user ID.
+     *
+     * @param userId the user ID
+     * @return an Optional containing {@link UserContactSnapshot} if found
+     */
+    public Optional<UserContactSnapshot> fetchUserContactById(@Nullable Long userId) {
+        if (userId == null || userId <= 0) {
+            return Optional.empty();
+        }
+        return userRepository.findById(UserId.of(userId))
+                .map(user -> new UserContactSnapshot(
+                        userId,
+                        user.getEmail().value(),
+                        user.getFullName()
+                ));
     }
 }
