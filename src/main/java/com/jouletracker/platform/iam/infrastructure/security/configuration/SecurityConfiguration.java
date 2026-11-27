@@ -115,6 +115,9 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/users/*").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/users/*/password").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/users/*/deactivate").authenticated()
+                        // Stripe billing webhook and authenticated subscription endpoints (TS-18)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/subscriptions/webhook").permitAll()
+                        .requestMatchers("/api/v1/subscriptions/**").authenticated()
                         // Administrative moderation endpoints (US-49)
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/users/*/status").hasRole("ADMIN")
                         // All other endpoints temporarily permitted until JWT enforcement is enabled across frontend/IoT
