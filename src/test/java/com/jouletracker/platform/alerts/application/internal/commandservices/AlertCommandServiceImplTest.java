@@ -8,8 +8,10 @@ import com.jouletracker.platform.alerts.domain.model.valueobjects.AlertStatus;
 import com.jouletracker.platform.alerts.domain.repositories.AlertRepository;
 import com.jouletracker.platform.devices.interfaces.acl.DevicesContextFacade;
 import com.jouletracker.platform.devices.interfaces.acl.SensorThresholdSnapshot;
+import com.jouletracker.platform.iam.domain.model.valueobjects.EmailAddress;
 import com.jouletracker.platform.iam.domain.services.EmailService;
 import com.jouletracker.platform.iam.interfaces.acl.IamContextFacade;
+import com.jouletracker.platform.iam.interfaces.acl.UserContactSnapshot;
 import com.jouletracker.platform.shared.application.result.ApplicationError;
 import com.jouletracker.platform.shared.application.result.Result;
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,7 +49,7 @@ class AlertCommandServiceImplTest {
     private AlertCommandServiceImpl commandService;
 
     @Test
-    void handleShouldGenerateWarningWhenDailyLimitIsExceeded() {
+    void handleShouldGenerateWarningAndNotSendCriticalEmailWhenDailyLimitSlightlyExceeded() {
         SensorThresholdSnapshot snapshot = new SensorThresholdSnapshot(
                 10L, 1L, "Sensor Cocina", 5L, "Refrigeradora",
                 0.8, 3.5, 3.0, 1.5
@@ -66,6 +70,7 @@ class AlertCommandServiceImplTest {
         assertEquals(AlertSeverity.WARNING, alerts.get(0).getSeverity());
         assertTrue(alerts.get(0).getTitle().contains("Daily limit exceeded"));
         assertFalse(alerts.get(0).isRead());
+        verifyNoInteractions(emailService);
     }
 
     @Test
@@ -85,17 +90,24 @@ class AlertCommandServiceImplTest {
         assertEquals(1, alerts.size());
         assertEquals(AlertSeverity.INFO, alerts.get(0).getSeverity());
         assertTrue(alerts.get(0).getTitle().contains("Preventive consumption warning"));
+        verifyNoInteractions(emailService);
     }
 
     @Test
-    void handleShouldGenerateCriticalPowerAlertWhenPowerLimitExceeded() {
+    void handleShouldGenerateCriticalPowerAlertAndTriggerTs19Email() {
         SensorThresholdSnapshot snapshot = new SensorThresholdSnapshot(
                 10L, 1L, "Sensor Sala", 6L, "Aire Acondicionado",
                 2.8, 1.0, 5.0, 2.0
         );
         when(devicesContextFacade.fetchSensorThresholdById(10L)).thenReturn(Optional.of(snapshot));
         when(alertRepository.existsActiveByUserIdAndSensorIdAndTitle(any(), any(), any())).thenReturn(false);
-        when(alertRepository.save(any(Alert.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(alertRepository.save(any(Alert.class))).thenAnswer(inv -> {
+            Alert a = inv.getArgument(0);
+            a.setId(22L);
+            return a;
+        });
+        when(iamContextFacade.fetchUserContactById(1L))
+                .thenReturn(Optional.of(new UserContactSnapshot(1L, "jane@jouletracker.com", "Jane Doe")));
 
         List<Alert> alerts = commandService.handle(
                 new EvaluateConsumptionAlertCommand(1L, 10L, 6L, "Aire Acondicionado", 2.8, 0.4)
@@ -104,6 +116,78 @@ class AlertCommandServiceImplTest {
         assertEquals(1, alerts.size());
         assertEquals(AlertSeverity.CRITICAL, alerts.get(0).getSeverity());
         assertTrue(alerts.get(0).getTitle().contains("Power excess detected"));
+        verify(emailService).sendCriticalAlertEmail(
+                eq(EmailAddress.of("jane@jouletracker.com")),
+                eq("Jane Doe"),
+                contains("Power excess detected"),
+                contains("2.80 kW")
+        );
+    }
+
+    @Test
+    void handleShouldGenerateCriticalDailyAlertAndTriggerTs19WhenExceeding120Percent() {
+        SensorThresholdSnapshot snapshot = new SensorThresholdSnapshot(
+                10L, 1L, "Sensor Cocina", 5L, "Refrigeradora",
+                0.5, 3.7, 3.0, 1.5
+        );
+        when(devicesContextFacade.fetchSensorThresholdById(10L)).thenReturn(Optional.of(snapshot));
+        when(alertRepository.existsActiveByUserIdAndSensorIdAndTitle(any(), any(), any())).thenReturn(false);
+        when(alertRepository.save(any(Alert.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(iamContextFacade.fetchUserContactById(1L))
+                .thenReturn(Optional.of(new UserContactSnapshot(1L, "jane@jouletracker.com", "Jane Doe")));
+
+        List<Alert> alerts = commandService.handle(
+                new EvaluateConsumptionAlertCommand(1L, 10L, 5L, "Refrigeradora", 0.5, 0.4)
+        );
+
+        assertEquals(1, alerts.size());
+        assertEquals(AlertSeverity.CRITICAL, alerts.get(0).getSeverity());
+        verify(emailService).sendCriticalAlertEmail(
+                eq(EmailAddress.of("jane@jouletracker.com")),
+                eq("Jane Doe"),
+                contains("Daily limit exceeded"),
+                anyString()
+        );
+    }
+
+    @Test
+    void handleShouldDeduplicateActiveCriticalAlertAndNotResendEmail() {
+        SensorThresholdSnapshot snapshot = new SensorThresholdSnapshot(
+                10L, 1L, "Sensor Sala", 6L, "Aire Acondicionado",
+                2.8, 1.0, 5.0, 2.0
+        );
+        when(devicesContextFacade.fetchSensorThresholdById(10L)).thenReturn(Optional.of(snapshot));
+        when(alertRepository.existsActiveByUserIdAndSensorIdAndTitle(1L, 10L, "Power excess detected: Aire Acondicionado"))
+                .thenReturn(true);
+
+        List<Alert> alerts = commandService.handle(
+                new EvaluateConsumptionAlertCommand(1L, 10L, 6L, "Aire Acondicionado", 2.8, 0.4)
+        );
+
+        assertTrue(alerts.isEmpty());
+        verify(alertRepository, never()).save(any());
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void handleShouldNotFailAlertCreationWhenEmailServiceThrows() {
+        SensorThresholdSnapshot snapshot = new SensorThresholdSnapshot(
+                10L, 1L, "Sensor Sala", 6L, "Aire Acondicionado",
+                2.8, 1.0, 5.0, 2.0
+        );
+        when(devicesContextFacade.fetchSensorThresholdById(10L)).thenReturn(Optional.of(snapshot));
+        when(alertRepository.existsActiveByUserIdAndSensorIdAndTitle(any(), any(), any())).thenReturn(false);
+        when(alertRepository.save(any(Alert.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(iamContextFacade.fetchUserContactById(1L))
+                .thenReturn(Optional.of(new UserContactSnapshot(1L, "jane@jouletracker.com", "Jane Doe")));
+        doThrow(new RuntimeException("Brevo down")).when(emailService).sendCriticalAlertEmail(any(), any(), any(), any());
+
+        List<Alert> alerts = commandService.handle(
+                new EvaluateConsumptionAlertCommand(1L, 10L, 6L, "Aire Acondicionado", 2.8, 0.4)
+        );
+
+        assertEquals(1, alerts.size());
+        assertEquals(AlertSeverity.CRITICAL, alerts.get(0).getSeverity());
     }
 
     @Test
@@ -119,7 +203,7 @@ class AlertCommandServiceImplTest {
         );
 
         assertTrue(alerts.isEmpty());
-        verifyNoInteractions(alertRepository);
+        verifyNoInteractions(alertRepository, emailService);
     }
 
     @Test
