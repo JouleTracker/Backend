@@ -1,5 +1,7 @@
 package com.jouletracker.platform.energy.application.internal.commandservices;
 
+import com.jouletracker.platform.alerts.application.commandservices.AlertCommandService;
+import com.jouletracker.platform.alerts.domain.model.commands.EvaluateConsumptionAlertCommand;
 import com.jouletracker.platform.devices.interfaces.acl.DevicesContextFacade;
 import com.jouletracker.platform.energy.domain.model.aggregates.EnergyMeasurement;
 import com.jouletracker.platform.energy.domain.model.commands.RegisterEnergyMeasurementCommand;
@@ -8,6 +10,7 @@ import com.jouletracker.platform.shared.application.result.ApplicationError;
 import com.jouletracker.platform.shared.application.result.Result;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,11 +31,14 @@ class EnergyMeasurementCommandServiceImplTest {
     @Mock
     private DevicesContextFacade devicesContextFacade;
 
+    @Mock
+    private AlertCommandService alertCommandService;
+
     @InjectMocks
     private EnergyMeasurementCommandServiceImpl commandService;
 
     @Test
-    void handleShouldResolveDeviceSaveMeasurementAndUpdateSensorTelemetry() {
+    void handleShouldResolveDeviceSaveMeasurementUpdateTelemetryAndEvaluateAlert() {
         LocalDateTime measuredAt = LocalDateTime.of(2026, 11, 13, 14, 30, 0);
         RegisterEnergyMeasurementCommand command = new RegisterEnergyMeasurementCommand(
                 1L, 10L, null, "Refrigeradora", "Electrodomésticos",
@@ -56,6 +62,16 @@ class EnergyMeasurementCommandServiceImplTest {
         assertEquals(5L, saved.getDeviceId());
         assertEquals(0.29, saved.getCost());
         verify(devicesContextFacade).updateSensorTelemetry(eq(10L), eq(1.25), eq(0.42), anyString());
+
+        ArgumentCaptor<EvaluateConsumptionAlertCommand> alertCmdCaptor =
+                ArgumentCaptor.forClass(EvaluateConsumptionAlertCommand.class);
+        verify(alertCommandService).handle(alertCmdCaptor.capture());
+        EvaluateConsumptionAlertCommand captured = alertCmdCaptor.getValue();
+        assertEquals(1L, captured.userId());
+        assertEquals(10L, captured.sensorId());
+        assertEquals(5L, captured.deviceId());
+        assertEquals(1.25, captured.powerKw());
+        assertEquals(0.42, captured.energyKwh());
     }
 
     @Test
@@ -70,7 +86,7 @@ class EnergyMeasurementCommandServiceImplTest {
         assertTrue(result.isFailure());
         ApplicationError error = ((Result.Failure<EnergyMeasurement, ApplicationError>) result).error();
         assertEquals("VALIDATION_ERROR", error.code());
-        verifyNoInteractions(measurementRepository);
+        verifyNoInteractions(measurementRepository, alertCommandService);
     }
 
     @Test
@@ -85,7 +101,7 @@ class EnergyMeasurementCommandServiceImplTest {
         assertTrue(result.isFailure());
         ApplicationError error = ((Result.Failure<EnergyMeasurement, ApplicationError>) result).error();
         assertEquals("VALIDATION_ERROR", error.code());
-        verifyNoInteractions(measurementRepository);
+        verifyNoInteractions(measurementRepository, alertCommandService);
     }
 
     @Test
@@ -101,7 +117,7 @@ class EnergyMeasurementCommandServiceImplTest {
         assertTrue(result.isFailure());
         ApplicationError error = ((Result.Failure<EnergyMeasurement, ApplicationError>) result).error();
         assertEquals("SENSOR_NOT_FOUND", error.code());
-        verifyNoInteractions(measurementRepository);
+        verifyNoInteractions(measurementRepository, alertCommandService);
     }
 
     @Test
@@ -117,6 +133,6 @@ class EnergyMeasurementCommandServiceImplTest {
         assertTrue(result.isFailure());
         ApplicationError error = ((Result.Failure<EnergyMeasurement, ApplicationError>) result).error();
         assertEquals("DEVICE_NOT_FOUND", error.code());
-        verifyNoInteractions(measurementRepository);
+        verifyNoInteractions(measurementRepository, alertCommandService);
     }
 }

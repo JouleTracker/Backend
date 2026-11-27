@@ -1,5 +1,7 @@
 package com.jouletracker.platform.energy.application.internal.commandservices;
 
+import com.jouletracker.platform.alerts.application.commandservices.AlertCommandService;
+import com.jouletracker.platform.alerts.domain.model.commands.EvaluateConsumptionAlertCommand;
 import com.jouletracker.platform.devices.interfaces.acl.DevicesContextFacade;
 import com.jouletracker.platform.energy.application.commandservices.EnergyMeasurementCommandService;
 import com.jouletracker.platform.energy.domain.model.aggregates.EnergyMeasurement;
@@ -17,11 +19,14 @@ public class EnergyMeasurementCommandServiceImpl implements EnergyMeasurementCom
 
     private final EnergyMeasurementRepository measurementRepository;
     private final DevicesContextFacade devicesContextFacade;
+    private final AlertCommandService alertCommandService;
 
     public EnergyMeasurementCommandServiceImpl(EnergyMeasurementRepository measurementRepository,
-                                               DevicesContextFacade devicesContextFacade) {
+                                               DevicesContextFacade devicesContextFacade,
+                                               AlertCommandService alertCommandService) {
         this.measurementRepository = measurementRepository;
         this.devicesContextFacade = devicesContextFacade;
+        this.alertCommandService = alertCommandService;
     }
 
     @Override
@@ -77,6 +82,15 @@ public class EnergyMeasurementCommandServiceImpl implements EnergyMeasurementCom
 
         measurement.markAsRegistered();
         var saved = measurementRepository.save(measurement);
+
+        alertCommandService.handle(new EvaluateConsumptionAlertCommand(
+                saved.getUserId(),
+                saved.getSensorId(),
+                saved.getDeviceId(),
+                saved.getDeviceName(),
+                saved.getPowerKw(),
+                saved.getEnergyKwh()
+        ));
 
         return Result.success(saved);
     }
