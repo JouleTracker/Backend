@@ -8,6 +8,8 @@ import com.jouletracker.platform.alerts.domain.model.valueobjects.AlertStatus;
 import com.jouletracker.platform.alerts.domain.repositories.AlertRepository;
 import com.jouletracker.platform.devices.interfaces.acl.DevicesContextFacade;
 import com.jouletracker.platform.devices.interfaces.acl.SensorThresholdSnapshot;
+import com.jouletracker.platform.iam.domain.services.EmailService;
+import com.jouletracker.platform.iam.interfaces.acl.IamContextFacade;
 import com.jouletracker.platform.shared.application.result.ApplicationError;
 import com.jouletracker.platform.shared.application.result.Result;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,12 @@ class AlertCommandServiceImplTest {
 
     @Mock
     private DevicesContextFacade devicesContextFacade;
+
+    @Mock
+    private IamContextFacade iamContextFacade;
+
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private AlertCommandServiceImpl commandService;

@@ -9,8 +9,13 @@ import com.jouletracker.platform.alerts.domain.model.valueobjects.AlertStatus;
 import com.jouletracker.platform.alerts.domain.repositories.AlertRepository;
 import com.jouletracker.platform.devices.interfaces.acl.DevicesContextFacade;
 import com.jouletracker.platform.devices.interfaces.acl.SensorThresholdSnapshot;
+import com.jouletracker.platform.iam.domain.model.valueobjects.EmailAddress;
+import com.jouletracker.platform.iam.domain.services.EmailService;
+import com.jouletracker.platform.iam.interfaces.acl.IamContextFacade;
 import com.jouletracker.platform.shared.application.result.ApplicationError;
 import com.jouletracker.platform.shared.application.result.Result;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,22 +25,30 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Evaluates telemetry consumption and power thresholds to generate automated alerts (TS-14).
+ * Evaluates telemetry consumption and power thresholds to generate automated alerts (TS-14)
+ * and triggers critical email notifications via TS-19.
  */
 @Service
 @Transactional
 public class AlertCommandServiceImpl implements AlertCommandService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AlertCommandServiceImpl.class);
     private static final double PREVENTIVE_THRESHOLD_RATIO = 0.80;
     private static final double CRITICAL_EXCESS_RATIO = 1.20;
 
     private final AlertRepository alertRepository;
     private final DevicesContextFacade devicesContextFacade;
+    private final IamContextFacade iamContextFacade;
+    private final EmailService emailService;
 
     public AlertCommandServiceImpl(AlertRepository alertRepository,
-                                   DevicesContextFacade devicesContextFacade) {
+                                   DevicesContextFacade devicesContextFacade,
+                                   IamContextFacade iamContextFacade,
+                                   EmailService emailService) {
         this.alertRepository = alertRepository;
         this.devicesContextFacade = devicesContextFacade;
+        this.iamContextFacade = iamContextFacade;
+        this.emailService = emailService;
     }
 
     @Override
@@ -149,7 +162,27 @@ public class AlertCommandServiceImpl implements AlertCommandService {
                 AlertStatus.ACTIVE,
                 LocalDateTime.now()
         );
-        return java.util.Optional.of(alertRepository.save(alert));
+        Alert saved = alertRepository.save(alert);
+        notifyCriticalAlertIfApplicable(saved);
+        return java.util.Optional.of(saved);
+    }
+
+    private void notifyCriticalAlertIfApplicable(Alert savedAlert) {
+        if (savedAlert.getSeverity() != AlertSeverity.CRITICAL) {
+            return;
+        }
+        iamContextFacade.fetchUserContactById(savedAlert.getUserId()).ifPresent(contact -> {
+            try {
+                emailService.sendCriticalAlertEmail(
+                        EmailAddress.of(contact.email()),
+                        contact.fullName(),
+                        savedAlert.getTitle(),
+                        savedAlert.getDescription()
+                );
+            } catch (Exception ex) {
+                LOGGER.warn("Failed to dispatch TS-19 critical email for alertId={}: {}", savedAlert.getId(), ex.getMessage());
+            }
+        });
     }
 
     private String resolveDeviceName(SensorThresholdSnapshot snapshot, String fallbackDeviceName, String sensorDisplayName) {
