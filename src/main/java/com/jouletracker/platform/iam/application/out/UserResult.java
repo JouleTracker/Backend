@@ -23,8 +23,19 @@ public record UserResult(
         String email,
         String firstName,
         String lastName,
+        @Nullable String phone,
         Set<Role> roles,
         boolean emailVerified) {
+
+    public UserResult(
+            @Nullable Long id,
+            String email,
+            String firstName,
+            String lastName,
+            Set<Role> roles,
+            boolean emailVerified) {
+        this(id, email, firstName, lastName, null, roles, emailVerified);
+    }
 
     /**
      * Factory method mapping a domain {@link User} aggregate into a {@link UserResult}.
@@ -38,6 +49,7 @@ public record UserResult(
                 user.getEmail().value(),
                 user.getFirstName(),
                 user.getLastName(),
+                user.getPhone(),
                 user.getRoles(),
                 user.isEmailVerified()
         );

@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.iam.interfaces.acl;
 
 import com.jouletracker.platform.iam.domain.model.valueobjects.EmailAddress;
@@ -5,6 +6,7 @@ import com.jouletracker.platform.iam.domain.model.valueobjects.Role;
 import com.jouletracker.platform.iam.domain.model.valueobjects.UserId;
 import com.jouletracker.platform.iam.domain.repositories.UserRepository;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -30,7 +32,10 @@ public class IamContextFacade {
      * @return true if the user exists
      */
     public boolean existsUserById(Long userId) {
-        return userRepository.findById(UserId.of(userId)).isPresent();
+
+        return userRepository
+                .findById(UserId.of(userId))
+                .isPresent();
     }
 
     /**
@@ -40,10 +45,15 @@ public class IamContextFacade {
      * @return an Optional containing the user ID if found
      */
     public Optional<Long> fetchUserIdByEmail(String email) {
+
         try {
-            return userRepository.findByEmail(EmailAddress.of(email))
+
+            return userRepository
+                    .findByEmail(EmailAddress.of(email))
                     .map(user -> user.getId().value());
+
         } catch (IllegalArgumentException ex) {
+
             return Optional.empty();
         }
     }
@@ -52,12 +62,52 @@ public class IamContextFacade {
      * Checks whether a user possesses the specified security role.
      *
      * @param userId the user ID
-     * @param role   the role to check
+     * @param role the role to check
      * @return true if the user exists and holds the role
      */
     public boolean userHasRole(Long userId, Role role) {
-        return userRepository.findById(UserId.of(userId))
+
+        return userRepository
+                .findById(UserId.of(userId))
                 .map(user -> user.getRoles().contains(role))
                 .orElse(false);
+    }
+
+    /**
+     * TS-19: Retrieves contact information for critical
+     * energy alert notifications.
+     *
+     * Only accounts eligible for authentication
+     * are returned.
+     *
+     * @param userId the user identifier
+     * @return notification recipient information if available
+     */
+    public Optional<NotificationRecipient> fetchNotificationRecipient(
+            @Nullable Long userId) {
+
+        if (userId == null || userId <= 0) {
+            return Optional.empty();
+        }
+
+        return userRepository
+                .findById(UserId.of(userId))
+                .filter(user -> user.canAuthenticate())
+                .map(user -> new NotificationRecipient(
+                        user.getId().value(),
+                        user.getEmail().value(),
+                        user.getFullName()
+                ));
+    }
+
+    /**
+     * TS-19: Read-only contact information exposed
+     * to other bounded contexts.
+     */
+    public record NotificationRecipient(
+            Long userId,
+            String email,
+            String fullName
+    ) {
     }
 }

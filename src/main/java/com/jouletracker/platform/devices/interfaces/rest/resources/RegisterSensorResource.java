@@ -1,7 +1,9 @@
+
 package com.jouletracker.platform.devices.interfaces.rest.resources;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 @Schema(description = "Request body to register a new IoT smart meter sensor")
@@ -26,6 +28,10 @@ public record RegisterSensorResource(
         Long applianceProfileId,
 
         @Schema(description = "Owner user identifier", example = "1")
-        Long userId
+        Long userId,
+
+        @Positive
+        @Schema(description = "Assigned business area identifier (optional)", example = "3")
+        Long businessAreaId
 ) {
 }

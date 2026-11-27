@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.iam.infrastructure.email.brevo;
 
 import com.jouletracker.platform.iam.domain.model.valueobjects.EmailAddress;
@@ -13,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 
 import java.time.Year;
 import java.util.List;
@@ -28,7 +30,8 @@ import java.util.List;
 @NullMarked
 public class BrevoEmailService implements EmailService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(BrevoEmailService.class);
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(BrevoEmailService.class);
 
     private final BrevoRestClient brevoRestClient;
     private final BrevoProperties properties;
@@ -43,6 +46,7 @@ public class BrevoEmailService implements EmailService {
             ApplicationProperties applicationProperties,
             VerificationTokenProperties verificationTokenProperties,
             PasswordResetTokenProperties passwordResetTokenProperties) {
+
         this.brevoRestClient = brevoRestClient;
         this.properties = properties;
         this.applicationProperties = applicationProperties;
@@ -55,6 +59,7 @@ public class BrevoEmailService implements EmailService {
             BrevoProperties properties,
             ApplicationProperties applicationProperties,
             VerificationTokenProperties verificationTokenProperties) {
+
         this(
                 brevoRestClient,
                 properties,
@@ -65,8 +70,16 @@ public class BrevoEmailService implements EmailService {
     }
 
     @Override
-    public void sendVerificationEmail(EmailAddress recipient, String recipientName, String verificationToken) {
-        String verificationUrl = applicationProperties.buildEmailVerificationUrl(verificationToken);
+    public void sendVerificationEmail(
+            EmailAddress recipient,
+            String recipientName,
+            String verificationToken) {
+
+        String verificationUrl =
+                applicationProperties.buildEmailVerificationUrl(
+                        verificationToken
+                );
+
         String greetingName = formatGreetingName(recipientName);
 
         var sender = new BrevoSendSmtpEmailRequest.Sender(
@@ -74,22 +87,43 @@ public class BrevoEmailService implements EmailService {
                 properties.getSenderEmail()
         );
 
-        var to = List.of(new BrevoSendSmtpEmailRequest.Recipient(
-                recipient.value(),
-                greetingName
-        ));
+        var to = List.of(
+                new BrevoSendSmtpEmailRequest.Recipient(
+                        recipient.value(),
+                        greetingName
+                )
+        );
 
         String subject = "Confirm your JouleTracker account";
-        String htmlContent = buildVerificationHtmlContent(greetingName, verificationUrl);
 
-        var request = new BrevoSendSmtpEmailRequest(sender, to, subject, htmlContent);
+        String htmlContent = buildVerificationHtmlContent(
+                greetingName,
+                verificationUrl
+        );
 
-        dispatchEmail("verificación de cuenta", recipient, request);
+        var request = new BrevoSendSmtpEmailRequest(
+                sender,
+                to,
+                subject,
+                htmlContent
+        );
+
+        dispatchEmail(
+                "verificación de cuenta",
+                recipient,
+                request
+        );
     }
 
     @Override
-    public void sendPasswordResetEmail(EmailAddress recipient, String recipientName, String resetToken) {
-        String resetUrl = applicationProperties.buildPasswordResetUrl(resetToken);
+    public void sendPasswordResetEmail(
+            EmailAddress recipient,
+            String recipientName,
+            String resetToken) {
+
+        String resetUrl =
+                applicationProperties.buildPasswordResetUrl(resetToken);
+
         String greetingName = formatGreetingName(recipientName);
 
         var sender = new BrevoSendSmtpEmailRequest.Sender(
@@ -97,102 +131,297 @@ public class BrevoEmailService implements EmailService {
                 properties.getSenderEmail()
         );
 
-        var to = List.of(new BrevoSendSmtpEmailRequest.Recipient(
-                recipient.value(),
-                greetingName
-        ));
+        var to = List.of(
+                new BrevoSendSmtpEmailRequest.Recipient(
+                        recipient.value(),
+                        greetingName
+                )
+        );
 
         String subject = "Reset your JouleTracker password";
-        String htmlContent = buildPasswordResetHtmlContent(greetingName, resetUrl);
 
-        var request = new BrevoSendSmtpEmailRequest(sender, to, subject, htmlContent);
+        String htmlContent = buildPasswordResetHtmlContent(
+                greetingName,
+                resetUrl
+        );
 
-        dispatchEmail("recuperación de contraseña", recipient, request);
+        var request = new BrevoSendSmtpEmailRequest(
+                sender,
+                to,
+                subject,
+                htmlContent
+        );
+
+        dispatchEmail(
+                "recuperación de contraseña",
+                recipient,
+                request
+        );
     }
 
-    static String formatGreetingName(@Nullable String recipientName) {
+    /**
+     * TS-19: Delivers a critical energy alert to one recipient.
+     */
+    @Override
+    public void sendCriticalAlertEmail(
+            EmailAddress recipient,
+            String recipientName,
+            String alertTitle,
+            String alertDescription,
+            String sensorName,
+            String businessAreaName) {
+
+        String greetingName = formatGreetingName(recipientName);
+
+        var sender = new BrevoSendSmtpEmailRequest.Sender(
+                properties.getSenderName(),
+                properties.getSenderEmail()
+        );
+
+        var to = List.of(
+                new BrevoSendSmtpEmailRequest.Recipient(
+                        recipient.value(),
+                        greetingName
+                )
+        );
+
+        String subject =
+                "JouleTracker | Alerta crítica de consumo energético";
+
+        String htmlContent = buildCriticalAlertHtmlContent(
+                greetingName,
+                alertTitle,
+                alertDescription,
+                sensorName,
+                businessAreaName
+        );
+
+        var request = new BrevoSendSmtpEmailRequest(
+                sender,
+                to,
+                subject,
+                htmlContent
+        );
+
+        dispatchEmail(
+                "alerta crítica de consumo",
+                recipient,
+                request
+        );
+    }
+
+    /**
+     * TS-19: Builds the HTML template for critical energy alerts.
+     */
+    private String buildCriticalAlertHtmlContent(
+            String recipientName,
+            String alertTitle,
+            String alertDescription,
+            String sensorName,
+            String businessAreaName) {
+
+        return """
+                <!DOCTYPE html>
+                <html lang="es">
+                <head>
+                    <meta charset="utf-8">
+                    <title>Alerta crítica - JouleTracker</title>
+                </head>
+                <body style="font-family:Arial,sans-serif;background:#f4f6f8;margin:0;padding:24px;color:#1a202c;">
+                    <div style="max-width:580px;margin:0 auto;background:#ffffff;border-radius:8px;padding:32px;">
+                        <p style="color:#b91c1c;font-weight:bold;">
+                            JOULETRACKER | ALERTA CRÍTICA
+                        </p>
+
+                        <h1 style="font-size:22px;">%s</h1>
+
+                        <p>Hola <strong>%s</strong>,</p>
+
+                        <p>
+                            Se ha detectado una condición crítica
+                            de consumo energético.
+                        </p>
+
+                        <div style="background:#fef2f2;border-left:4px solid #b91c1c;padding:16px;">
+                            <p><strong>Sensor:</strong> %s</p>
+                            <p><strong>Área:</strong> %s</p>
+                            <p><strong>Detalle:</strong> %s</p>
+                        </div>
+
+                        <p>
+                            Revisa las mediciones y los límites
+                            configurados en JouleTracker.
+                        </p>
+
+                        <hr style="border:0;border-top:1px solid #e2e8f0;">
+
+                        <p style="font-size:13px;color:#718096;">
+                            Notificación automática de JouleTracker.
+                            &copy; %s.
+                        </p>
+                    </div>
+                </body>
+                </html>
+                """.formatted(
+                HtmlUtils.htmlEscape(alertTitle),
+                HtmlUtils.htmlEscape(recipientName),
+                HtmlUtils.htmlEscape(sensorName),
+                HtmlUtils.htmlEscape(businessAreaName),
+                HtmlUtils.htmlEscape(alertDescription),
+                Year.now().getValue()
+        );
+    }
+
+    static String formatGreetingName(
+            @Nullable String recipientName) {
+
         if (recipientName == null || recipientName.isBlank()) {
             return "";
         }
+
         String[] tokens = recipientName.trim().split("\\s+");
+
         if (tokens.length % 2 == 0) {
+
             int half = tokens.length / 2;
-            String firstHalf = String.join(" ", java.util.Arrays.copyOfRange(tokens, 0, half));
-            String secondHalf = String.join(" ", java.util.Arrays.copyOfRange(tokens, half, tokens.length));
+
+            String firstHalf = String.join(
+                    " ",
+                    java.util.Arrays.copyOfRange(
+                            tokens, 0, half
+                    )
+            );
+
+            String secondHalf = String.join(
+                    " ",
+                    java.util.Arrays.copyOfRange(
+                            tokens, half, tokens.length
+                    )
+            );
+
             if (firstHalf.equalsIgnoreCase(secondHalf)) {
                 return firstHalf;
             }
         }
+
         return String.join(" ", tokens);
     }
 
-    static String formatGreetingName(@Nullable String firstName, @Nullable String lastName) {
-        String cleanFirst = firstName == null ? "" : firstName.trim();
-        String cleanLast = lastName == null ? "" : lastName.trim();
+    static String formatGreetingName(
+            @Nullable String firstName,
+            @Nullable String lastName) {
+
+        String cleanFirst =
+                firstName == null ? "" : firstName.trim();
+
+        String cleanLast =
+                lastName == null ? "" : lastName.trim();
+
         if (cleanFirst.isEmpty()) {
             return formatGreetingName(cleanLast);
         }
-        if (cleanLast.isEmpty() || cleanFirst.equalsIgnoreCase(cleanLast)) {
+
+        if (cleanLast.isEmpty()
+                || cleanFirst.equalsIgnoreCase(cleanLast)) {
+
             return cleanFirst;
         }
+
         return cleanFirst + " " + cleanLast;
     }
 
-    private void dispatchEmail(String emailType, EmailAddress recipient, BrevoSendSmtpEmailRequest request) {
+    private void dispatchEmail(
+            String emailType,
+            EmailAddress recipient,
+            BrevoSendSmtpEmailRequest request) {
+
         String maskedRecipient = maskEmail(recipient.value());
         String senderEmail = properties.getSenderEmail();
         String apiUrl = properties.getApiUrl();
 
         if (properties.hasMissingApiKey()) {
+
             LOGGER.error(
                     "No se puede enviar correo de {} vía Brevo: BREVO_API_KEY no está configurada o está vacía (destinatario={}, remitente={}, endpoint={}).",
-                    emailType, maskedRecipient, senderEmail, apiUrl
+                    emailType,
+                    maskedRecipient,
+                    senderEmail,
+                    apiUrl
             );
+
         } else if (properties.hasPlaceholderApiKey()) {
+
             LOGGER.warn(
                     "BREVO_API_KEY parece contener un valor de marcador de posición (placeholder); la API de Brevo probablemente rechazará el envío de {} con HTTP 401 (destinatario={}, remitente={}, endpoint={}).",
-                    emailType, maskedRecipient, senderEmail, apiUrl
+                    emailType,
+                    maskedRecipient,
+                    senderEmail,
+                    apiUrl
             );
         }
 
         if (senderEmail == null || senderEmail.isBlank()) {
+
             LOGGER.warn(
                     "BREVO_SENDER_EMAIL está vacía al intentar enviar correo de {} (destinatario={}, endpoint={}).",
-                    emailType, maskedRecipient, apiUrl
+                    emailType,
+                    maskedRecipient,
+                    apiUrl
             );
         }
 
         LOGGER.info(
                 "Iniciando envío de correo de {} vía Brevo (destinatario={}, remitente={}, endpoint={}).",
-                emailType, maskedRecipient, senderEmail, apiUrl
+                emailType,
+                maskedRecipient,
+                senderEmail,
+                apiUrl
         );
 
         try {
+
             brevoRestClient.sendTransactionalEmail(request);
+
             LOGGER.info(
                     "Correo de {} aceptado por Brevo (destinatario={}, remitente={}).",
-                    emailType, maskedRecipient, senderEmail
+                    emailType,
+                    maskedRecipient,
+                    senderEmail
             );
+
         } catch (RuntimeException ex) {
+
             LOGGER.error(
                     "Fallo al enviar correo de {} vía Brevo (destinatario={}, remitente={}, endpoint={}): {}",
-                    emailType, maskedRecipient, senderEmail, apiUrl, ex.getMessage()
+                    emailType,
+                    maskedRecipient,
+                    senderEmail,
+                    apiUrl,
+                    ex.getMessage()
             );
+
             throw ex;
         }
     }
 
     static String maskEmail(String email) {
+
         int atIndex = email.indexOf('@');
+
         if (atIndex <= 0 || atIndex == email.length() - 1) {
             return "***";
         }
+
         String local = email.substring(0, atIndex);
         String domain = email.substring(atIndex);
+
         return local.charAt(0) + "***" + domain;
     }
 
-    private String buildVerificationHtmlContent(String recipientName, String verificationUrl) {
+    private String buildVerificationHtmlContent(
+            String recipientName,
+            String verificationUrl) {
+
         return """
                 <!DOCTYPE html>
                 <html>
@@ -238,7 +467,10 @@ public class BrevoEmailService implements EmailService {
         );
     }
 
-    private String buildPasswordResetHtmlContent(String recipientName, String resetUrl) {
+    private String buildPasswordResetHtmlContent(
+            String recipientName,
+            String resetUrl) {
+
         return """
                 <!DOCTYPE html>
                 <html>

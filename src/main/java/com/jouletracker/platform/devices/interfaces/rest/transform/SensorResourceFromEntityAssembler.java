@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.devices.interfaces.rest.transform;
 
 import com.jouletracker.platform.devices.domain.model.aggregates.Sensor;
@@ -32,7 +33,8 @@ public class SensorResourceFromEntityAssembler {
                 entity.getApplianceProfileId(),
                 entity.getApplianceProfileName(),
                 entity.getRecommendedDailyKwh(),
-                entity.getLastSync()
+                entity.getLastSync(),
+                entity.getBusinessAreaId()
         );
     }
 }

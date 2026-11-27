@@ -1,7 +1,9 @@
+
 package com.jouletracker.platform.devices.interfaces.acl;
 
 /**
- * Lightweight ACL snapshot of a sensor's telemetry and configured consumption thresholds.
+ * Lightweight ACL snapshot of a sensor's telemetry
+ * and configured consumption thresholds.
  */
 public record SensorThresholdSnapshot(
         Long sensorId,
@@ -12,6 +14,7 @@ public record SensorThresholdSnapshot(
         Double currentPowerKw,
         Double todayKwh,
         Double recommendedDailyKwh,
-        Double devicePowerLimitKw
+        Double devicePowerLimitKw,
+        Long businessAreaId
 ) {
 }

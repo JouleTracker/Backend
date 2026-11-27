@@ -1,10 +1,14 @@
+
 package com.jouletracker.platform.businessenergy.interfaces.rest.transform;
 
 import com.jouletracker.platform.businessenergy.domain.model.commands.UpdateBusinessAreaCommand;
 import com.jouletracker.platform.businessenergy.interfaces.rest.resources.UpdateBusinessAreaResource;
 
 /**
- * Assembler to translate an UpdateBusinessAreaResource into UpdateBusinessAreaCommand (US-31 Escenario 3).
+ * Assembler to translate an UpdateBusinessAreaResource
+ * into UpdateBusinessAreaCommand (US-31 Escenario 3).
+ *
+ * US-32: Supports updating shared notification recipients.
  */
 public final class UpdateBusinessAreaCommandFromResourceAssembler {
 
@@ -22,7 +26,8 @@ public final class UpdateBusinessAreaCommandFromResourceAssembler {
                 resource.name(),
                 resource.floor(),
                 resource.description(),
-                resource.icon()
+                resource.icon(),
+                resource.notificationRecipients()
         );
     }
 }

@@ -3,6 +3,7 @@ package com.jouletracker.platform.users.domain.services;
 import com.jouletracker.platform.users.domain.model.valueobjects.AccountModerationStatus;
 import com.jouletracker.platform.users.domain.model.valueobjects.ManagedUserSnapshot;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -39,6 +40,17 @@ public interface ManagedUserAccountPort {
      * @return updated user snapshot
      */
     ManagedUserSnapshot updatePassword(Long userId, String newRawPassword);
+
+    /**
+     * Updates the user's personal profile details via IAM aggregate domain behavior (TS-12).
+     *
+     * @param userId    the user ID
+     * @param firstName updated first name
+     * @param lastName  updated last name
+     * @param phone     optional updated phone number
+     * @return updated user snapshot
+     */
+    ManagedUserSnapshot updateProfile(Long userId, String firstName, String lastName, @Nullable String phone);
 
     /**
      * Soft-deactivates the user account via IAM aggregate domain behavior.

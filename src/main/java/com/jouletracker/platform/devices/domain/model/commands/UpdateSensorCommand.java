@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.devices.domain.model.commands;
 
 import com.jouletracker.platform.devices.domain.model.valueobjects.SensorNetworkStatus;
@@ -12,6 +13,7 @@ public record UpdateSensorCommand(
         String model,
         SensorNetworkStatus status,
         Long assignedDeviceId,
-        Long applianceProfileId
+        Long applianceProfileId,
+        Long businessAreaId
 ) {
 }

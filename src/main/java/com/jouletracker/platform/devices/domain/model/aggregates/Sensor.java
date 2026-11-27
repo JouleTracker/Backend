@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.devices.domain.model.aggregates;
 
 import com.jouletracker.platform.devices.domain.model.commands.RegisterSensorCommand;
@@ -19,6 +20,7 @@ public class Sensor extends AbstractDomainAggregateRoot<Sensor> {
 
     private Long id;
     private Long userId;
+    private Long businessAreaId;
     private String name;
     private String model;
     private SerialNumber serialNumber;
@@ -101,6 +103,28 @@ public class Sensor extends AbstractDomainAggregateRoot<Sensor> {
     }
 
     /**
+     * Associates this sensor with a business area (US-32).
+     */
+    public void assignBusinessArea(Long businessAreaId) {
+        Objects.requireNonNull(businessAreaId, "businessAreaId must not be null");
+
+        if (businessAreaId <= 0) {
+            throw new IllegalArgumentException(
+                    "businessAreaId must be greater than zero"
+            );
+        }
+
+        this.businessAreaId = businessAreaId;
+    }
+
+    /**
+     * Removes the business area association (US-32).
+     */
+    public void unassignBusinessArea() {
+        this.businessAreaId = null;
+    }
+
+    /**
      * Assigns this sensor to a domestic appliance (US-41, US-43).
      */
     public void assignDevice(Long deviceId, String deviceName, String deviceCategory) {
@@ -152,6 +176,8 @@ public class Sensor extends AbstractDomainAggregateRoot<Sensor> {
      * Signals sensor registration event.
      */
     public void onRegistered() {
-        registerDomainEvent(new SensorRegisteredEvent(this.id, this.userId, this.serialNumber.value()));
+        registerDomainEvent(new SensorRegisteredEvent(
+                this.id, this.userId, this.serialNumber.value()
+        ));
     }
 }
