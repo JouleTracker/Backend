@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.devices.infrastructure.persistence.jpa.entities;
 
 import com.jouletracker.platform.devices.domain.model.valueobjects.SensorNetworkStatus;
@@ -17,6 +18,10 @@ public class SensorPersistenceEntity extends AuditableAbstractPersistenceEntity 
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
+
+    // US-32: Business area associated with the sensor.
+    @Column(name = "business_area_id")
+    private Long businessAreaId;
 
     @Column(name = "name", nullable = false, length = 100)
     private String name;

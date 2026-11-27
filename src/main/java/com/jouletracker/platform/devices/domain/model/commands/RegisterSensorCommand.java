@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.devices.domain.model.commands;
 
 /**
@@ -9,6 +10,7 @@ public record RegisterSensorCommand(
         String model,
         String serialNumber,
         Long assignedDeviceId,
-        Long applianceProfileId
+        Long applianceProfileId,
+        Long businessAreaId
 ) {
 }

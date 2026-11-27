@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.devices.application.acl;
 
 import com.jouletracker.platform.devices.domain.model.aggregates.Device;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -21,7 +23,10 @@ public class DevicesContextFacadeImpl implements DevicesContextFacade {
     private final SensorRepository sensorRepository;
     private final DeviceRepository deviceRepository;
 
-    public DevicesContextFacadeImpl(SensorRepository sensorRepository, DeviceRepository deviceRepository) {
+    public DevicesContextFacadeImpl(
+            SensorRepository sensorRepository,
+            DeviceRepository deviceRepository) {
+
         this.sensorRepository = sensorRepository;
         this.deviceRepository = deviceRepository;
     }
@@ -37,8 +42,14 @@ public class DevicesContextFacadeImpl implements DevicesContextFacade {
     }
 
     @Override
-    public boolean updateSensorTelemetry(Long sensorId, Double powerKw, Double addedKwh, String timestamp) {
+    public boolean updateSensorTelemetry(
+            Long sensorId,
+            Double powerKw,
+            Double addedKwh,
+            String timestamp) {
+
         Optional<Sensor> sensorOpt = sensorRepository.findById(sensorId);
+
         if (sensorOpt.isEmpty()) {
             return false;
         }
@@ -47,12 +58,17 @@ public class DevicesContextFacadeImpl implements DevicesContextFacade {
         sensor.recordTelemetry(powerKw, addedKwh, timestamp);
         sensorRepository.save(sensor);
 
-        // Also update linked device telemetry if applicable
+        // Also update linked device telemetry if applicable.
         if (sensor.getAssignedDeviceId() != null) {
-            deviceRepository.findById(sensor.getAssignedDeviceId()).ifPresent(device -> {
-                device.updateTelemetry(powerKw, sensor.getTodayKwh(), timestamp);
-                deviceRepository.save(device);
-            });
+            deviceRepository.findById(sensor.getAssignedDeviceId())
+                    .ifPresent(device -> {
+                        device.updateTelemetry(
+                                powerKw,
+                                sensor.getTodayKwh(),
+                                timestamp
+                        );
+                        deviceRepository.save(device);
+                    });
         }
 
         return true;
@@ -67,9 +83,14 @@ public class DevicesContextFacadeImpl implements DevicesContextFacade {
     @Override
     @Transactional(readOnly = true)
     public List<DeviceTelemetrySnapshot> fetchDevicesByUserId(Long userId) {
+
         if (userId == null) {
             return List.of();
         }
+
+        // US-32: Retrieve sensors belonging to the current user.
+        List<Sensor> sensors = sensorRepository.findAllByUserId(userId);
+
         return deviceRepository.findAllByUserId(userId).stream()
                 .map(device -> new DeviceTelemetrySnapshot(
                         device.getId(),
@@ -78,19 +99,55 @@ public class DevicesContextFacadeImpl implements DevicesContextFacade {
                         device.getLocation(),
                         device.getCategory(),
                         device.getStatus() == DeviceStatus.ONLINE,
-                        device.getCurrentPowerKw() != null ? device.getCurrentPowerKw() : 0.0,
+                        device.getCurrentPowerKw() != null
+                                ? device.getCurrentPowerKw() : 0.0,
                         device.getPowerLimitKw(),
-                        device.getTodayKwh() != null ? device.getTodayKwh() : 0.0
+                        device.getTodayKwh() != null
+                                ? device.getTodayKwh() : 0.0,
+                        resolveBusinessAreaId(device.getId(), sensors)
                 ))
                 .toList();
     }
 
+    /**
+     * US-32: Resolves the business area associated with a device
+     * through its linked sensors.
+     */
+    private Long resolveBusinessAreaId(
+            Long deviceId,
+            List<Sensor> sensors) {
+
+        if (deviceId == null) {
+            return null;
+        }
+
+        List<Long> businessAreaIds = sensors.stream()
+                .filter(sensor ->
+                        Objects.equals(
+                                sensor.getAssignedDeviceId(),
+                                deviceId
+                        )
+                )
+                .map(Sensor::getBusinessAreaId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        // Avoid assigning an ambiguous business area.
+        return businessAreaIds.size() == 1
+                ? businessAreaIds.get(0)
+                : null;
+    }
+
     @Override
     @Transactional(readOnly = true)
-    public List<SensorThresholdSnapshot> fetchSensorThresholdsByUserId(Long userId) {
+    public List<SensorThresholdSnapshot> fetchSensorThresholdsByUserId(
+            Long userId) {
+
         if (userId == null) {
             return List.of();
         }
+
         return sensorRepository.findAllByUserId(userId).stream()
                 .map(this::toSensorThresholdSnapshot)
                 .toList();
@@ -98,36 +155,56 @@ public class DevicesContextFacadeImpl implements DevicesContextFacade {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<SensorThresholdSnapshot> fetchSensorThresholdById(Long sensorId) {
+    public Optional<SensorThresholdSnapshot> fetchSensorThresholdById(
+            Long sensorId) {
+
         if (sensorId == null) {
             return Optional.empty();
         }
+
         return sensorRepository.findById(sensorId)
                 .map(this::toSensorThresholdSnapshot);
     }
 
+    /**
+     * Creates a sensor telemetry snapshot for cross-context
+     * consumption threshold evaluation and business area alerts.
+     */
     private SensorThresholdSnapshot toSensorThresholdSnapshot(Sensor sensor) {
+
         Double devicePowerLimitKw = null;
         String resolvedDeviceName = sensor.getAssignedDeviceName();
+
         if (sensor.getAssignedDeviceId() != null) {
-            Optional<Device> deviceOpt = deviceRepository.findById(sensor.getAssignedDeviceId());
+
+            Optional<Device> deviceOpt =
+                    deviceRepository.findById(sensor.getAssignedDeviceId());
+
             if (deviceOpt.isPresent()) {
+
                 devicePowerLimitKw = deviceOpt.get().getPowerLimitKw();
-                if (resolvedDeviceName == null || resolvedDeviceName.isBlank()) {
+
+                if (resolvedDeviceName == null
+                        || resolvedDeviceName.isBlank()) {
+
                     resolvedDeviceName = deviceOpt.get().getName();
                 }
             }
         }
+
         return new SensorThresholdSnapshot(
                 sensor.getId(),
                 sensor.getUserId(),
                 sensor.getName(),
                 sensor.getAssignedDeviceId(),
                 resolvedDeviceName,
-                sensor.getCurrentPowerKw() != null ? sensor.getCurrentPowerKw() : 0.0,
-                sensor.getTodayKwh() != null ? sensor.getTodayKwh() : 0.0,
+                sensor.getCurrentPowerKw() != null
+                        ? sensor.getCurrentPowerKw() : 0.0,
+                sensor.getTodayKwh() != null
+                        ? sensor.getTodayKwh() : 0.0,
                 sensor.getRecommendedDailyKwh(),
-                devicePowerLimitKw
+                devicePowerLimitKw,
+                sensor.getBusinessAreaId()
         );
     }
 }

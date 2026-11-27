@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.businessenergy.interfaces.rest.transform;
 
 import com.jouletracker.platform.businessenergy.domain.model.commands.CreateBusinessAreaCommand;
@@ -6,6 +7,8 @@ import com.jouletracker.platform.businessenergy.interfaces.rest.resources.Create
 /**
  * Assembler to translate a REST request resource
  * into a CreateBusinessAreaCommand.
+ *
+ * US-32: Supports shared notification recipients.
  */
 public final class CreateBusinessAreaCommandFromResourceAssembler {
 
@@ -21,7 +24,8 @@ public final class CreateBusinessAreaCommandFromResourceAssembler {
                 resource.name(),
                 resource.floor(),
                 resource.description(),
-                resource.icon()
+                resource.icon(),
+                resource.notificationRecipients()
         );
     }
 }

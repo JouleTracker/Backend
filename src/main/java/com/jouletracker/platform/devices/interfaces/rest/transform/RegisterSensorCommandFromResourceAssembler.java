@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.devices.interfaces.rest.transform;
 
 import com.jouletracker.platform.devices.domain.model.commands.RegisterSensorCommand;
@@ -19,7 +20,8 @@ public class RegisterSensorCommandFromResourceAssembler {
                 resource.model(),
                 resource.serialNumber(),
                 resource.assignedDeviceId(),
-                resource.applianceProfileId()
+                resource.applianceProfileId(),
+                resource.businessAreaId()
         );
     }
 }

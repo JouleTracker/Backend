@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.devices.infrastructure.persistence.jpa.assemblers;
 
 import com.jouletracker.platform.devices.domain.model.aggregates.Sensor;
@@ -16,7 +17,8 @@ public final class SensorPersistenceAssembler {
         if (entity == null) {
             return null;
         }
-        return new Sensor(
+
+        Sensor sensor = new Sensor(
                 entity.getId(),
                 entity.getUserId(),
                 entity.getName(),
@@ -33,15 +35,27 @@ public final class SensorPersistenceAssembler {
                 entity.getRecommendedDailyKwh(),
                 entity.getLastSync()
         );
+
+        // US-32: Restore business area association.
+        if (entity.getBusinessAreaId() != null) {
+            sensor.assignBusinessArea(entity.getBusinessAreaId());
+        }
+
+        return sensor;
     }
 
     public static SensorPersistenceEntity toPersistenceFromDomain(Sensor domain) {
         if (domain == null) {
             return null;
         }
+
         SensorPersistenceEntity entity = new SensorPersistenceEntity();
         entity.setId(domain.getId());
         entity.setUserId(domain.getUserId());
+
+        // US-32: Persist business area association.
+        entity.setBusinessAreaId(domain.getBusinessAreaId());
+
         entity.setName(domain.getName());
         entity.setModel(domain.getModel());
         entity.setSerialNumber(domain.getSerialNumber() != null ? domain.getSerialNumber().value() : null);
@@ -55,6 +69,7 @@ public final class SensorPersistenceAssembler {
         entity.setApplianceProfileName(domain.getApplianceProfileName());
         entity.setRecommendedDailyKwh(domain.getRecommendedDailyKwh());
         entity.setLastSync(domain.getLastSync());
+
         return entity;
     }
 }
