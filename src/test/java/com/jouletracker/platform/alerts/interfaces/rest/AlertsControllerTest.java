@@ -5,6 +5,7 @@ import com.jouletracker.platform.alerts.application.queryservices.AlertQueryServ
 import com.jouletracker.platform.alerts.domain.model.aggregates.Alert;
 import com.jouletracker.platform.alerts.domain.model.commands.MarkAlertAsReadCommand;
 import com.jouletracker.platform.alerts.domain.model.entities.AlertSummary;
+import com.jouletracker.platform.alerts.domain.model.queries.GetActiveAlertsByUserIdQuery;
 import com.jouletracker.platform.alerts.domain.model.queries.GetAlertSummaryByUserIdQuery;
 import com.jouletracker.platform.alerts.domain.model.queries.GetAlertsByUserIdQuery;
 import com.jouletracker.platform.alerts.domain.model.valueobjects.AlertSeverity;
@@ -53,8 +54,8 @@ class AlertsControllerTest {
     void getAlertsShouldReturn200WithFrontendCompatibleResources() throws Exception {
         Alert alert = new Alert(
                 1L, 1L, 10L, 5L,
-                "Límite diario superado: Sensor Cocina",
-                "Consumo de 3.50 kWh superó el límite.",
+                "Daily limit exceeded: Sensor Cocina",
+                "Device Refrigeradora consumed 3.50 kWh today.",
                 AlertSeverity.WARNING, "/dispositivos", false, AlertStatus.ACTIVE,
                 LocalDateTime.now().minusMinutes(5)
         );
@@ -70,11 +71,29 @@ class AlertsControllerTest {
     }
 
     @Test
+    void getActiveCriticalAlertsShouldReturn200WithCriticalAlertsOnly() throws Exception {
+        Alert criticalAlert = new Alert(
+                9L, 1L, 10L, 5L,
+                "Power excess detected: Aire Acondicionado",
+                "Instantaneous power of 2.80 kW exceeds limit.",
+                AlertSeverity.CRITICAL, "/dispositivos", false, AlertStatus.ACTIVE,
+                LocalDateTime.now()
+        );
+        when(alertQueryService.handle(any(GetActiveAlertsByUserIdQuery.class))).thenReturn(List.of(criticalAlert));
+
+        mockMvc.perform(get("/api/v1/alerts/critical").param("userId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(9))
+                .andExpect(jsonPath("$[0].severity").value("critical"))
+                .andExpect(jsonPath("$[0].read").value(false));
+    }
+
+    @Test
     void markAlertAsReadShouldReturn200WhenFound() throws Exception {
         Alert readAlert = new Alert(
                 1L, 1L, 10L, 5L,
-                "Límite diario superado: Sensor Cocina",
-                "Consumo de 3.50 kWh superó el límite.",
+                "Daily limit exceeded: Sensor Cocina",
+                "Device Refrigeradora consumed 3.50 kWh today.",
                 AlertSeverity.WARNING, "/dispositivos", true, AlertStatus.READ,
                 LocalDateTime.now()
         );
