@@ -1,5 +1,6 @@
 package com.jouletracker.platform.alerts.application.queryservices;
 
+import com.jouletracker.platform.alerts.domain.model.aggregates.MonthlyGoal;
 import com.jouletracker.platform.alerts.domain.model.entities.MonthlyGoalProgress;
 import com.jouletracker.platform.alerts.domain.model.queries.GetCurrentMonthlyGoalQuery;
 import com.jouletracker.platform.alerts.domain.model.queries.GetMonthlyGoalByIdQuery;
@@ -15,4 +16,5 @@ public interface MonthlyGoalQueryService {
     List<MonthlyGoalProgress> handle(GetMonthlyGoalsByUserIdQuery query);
     Optional<MonthlyGoalProgress> handle(GetMonthlyGoalByIdQuery query);
     Optional<MonthlyGoalProgress> handle(GetCurrentMonthlyGoalQuery query);
+    MonthlyGoalProgress toProgress(MonthlyGoal goal);
 }
