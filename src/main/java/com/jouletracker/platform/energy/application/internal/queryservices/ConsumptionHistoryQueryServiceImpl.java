@@ -54,13 +54,13 @@ public class ConsumptionHistoryQueryServiceImpl implements ConsumptionHistoryQue
 
     private String classifyStatus(Double powerKw) {
         if (powerKw == null || powerKw <= 0.0) {
-            return "Apagado";
+            return "Off";
         }
         if (powerKw < 0.05) {
             return "Standby";
         }
         if (powerKw > 2.0) {
-            return "Pico Alto";
+            return "High Peak";
         }
         return "Normal";
     }
