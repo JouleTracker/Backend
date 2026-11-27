@@ -17,7 +17,7 @@ import java.util.List;
  * Adapter implementing {@link EmailService} using Brevo's transactional email API.
  *
  * <p>Network or configuration failures are logged and handled gracefully so user
- * registration is not blocked when Brevo is unavailable or unconfigured (TS-19).</p>
+ * registration and alert processing are not blocked when Brevo is unavailable or unconfigured (TS-19).</p>
  */
 @Service
 @NullMarked
@@ -75,6 +75,38 @@ public class BrevoEmailService implements EmailService {
         }
     }
 
+    @Override
+    public void sendCriticalAlertEmail(EmailAddress recipient, String recipientName, String alertTitle, String alertDescription) {
+        if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
+            LOGGER.warn("Brevo API key is not configured. Skipping critical alert email for {}: {} - {}",
+                    recipient.value(), alertTitle, alertDescription);
+            return;
+        }
+
+        var sender = new BrevoSendSmtpEmailRequest.Sender(
+                properties.getSenderName(),
+                properties.getSenderEmail()
+        );
+
+        var to = List.of(new BrevoSendSmtpEmailRequest.Recipient(
+                recipient.value(),
+                recipientName
+        ));
+
+        String subject = "[CRITICAL ALERT] " + alertTitle;
+        String htmlContent = buildCriticalAlertHtmlContent(recipientName, alertTitle, alertDescription);
+
+        var request = new BrevoSendSmtpEmailRequest(sender, to, subject, htmlContent);
+
+        try {
+            brevoRestClient.sendTransactionalEmail(request);
+            LOGGER.info("Critical alert email accepted by Brevo for alert: {}", alertTitle);
+        } catch (Exception ex) {
+            LOGGER.error("Failed to send critical alert email via Brevo for {}. Alert creation will proceed.",
+                    recipient.value(), ex);
+        }
+    }
+
     private String buildVerificationUrl(String token) {
         String base = applicationProperties.getEmailVerificationUrl();
         String separator = base.contains("?") ? "&" : "?";
@@ -120,5 +152,45 @@ public class BrevoEmailService implements EmailService {
                 </body>
                 </html>
                 """.formatted(recipientName, verificationUrl, verificationTokenProperties.getValidityHours(), String.valueOf(java.time.Year.now().getValue()));
+    }
+
+    private String buildCriticalAlertHtmlContent(String recipientName, String alertTitle, String alertDescription) {
+        String dashboardUrl = applicationProperties.getFrontendUrl();
+        return """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>JouleTracker Critical Alert</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 24px; }
+                        .container { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 32px; border-top: 6px solid #dc2626; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+                        .badge { display: inline-block; background-color: #fee2e2; color: #b91c1c; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; margin-bottom: 12px; }
+                        .title { color: #1a202c; font-size: 20px; font-weight: 700; margin: 0 0 12px 0; }
+                        .content { color: #4a5568; line-height: 1.6; font-size: 15px; }
+                        .button-container { text-align: center; margin: 28px 0; }
+                        .button { background-color: #dc2626; color: #ffffff !important; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block; }
+                        .footer { margin-top: 24px; font-size: 13px; color: #718096; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <span class="badge">CRITICAL CONSUMPTION ALERT</span>
+                        <h1 class="title">%s</h1>
+                        <div class="content">
+                            <p>Hello <strong>%s</strong>,</p>
+                            <p>%s</p>
+                            <p>Please review your connected devices and sensors immediately to prevent electrical overload or excessive billing.</p>
+                            <div class="button-container">
+                                <a href="%s" class="button" target="_blank">Open JouleTracker Dashboard</a>
+                            </div>
+                        </div>
+                        <div class="footer">
+                            <p>&copy; %s JouleTracker Platform. Automated Alert System.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """.formatted(alertTitle, recipientName, alertDescription, dashboardUrl, String.valueOf(java.time.Year.now().getValue()));
     }
 }
