@@ -1,11 +1,17 @@
+
 package com.jouletracker.platform.businessenergy.interfaces.rest.resources;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 /**
  * Request body to register a new physical business area.
+ *
+ * US-32: Supports shared notification recipients.
  */
 @Schema(description = "Request body to create a business area")
 public record CreateBusinessAreaResource(
@@ -41,6 +47,38 @@ public record CreateBusinessAreaResource(
                 description = "Owner user identifier",
                 example = "1"
         )
-        Long userId
+        Long userId,
+
+        @Schema(
+                description = "Shared notification recipient email addresses",
+                example = "[\"admin@example.com\", \"supervisor@example.com\"]"
+        )
+        List<
+                @NotBlank(message = "Recipient email must not be blank")
+                @Email(message = "Invalid notification recipient email")
+                @Size(max = 254)
+                        String
+                > notificationRecipients
+
 ) {
+
+        /**
+         * Maintains compatibility with existing resource constructors.
+         */
+        public CreateBusinessAreaResource(
+                String name,
+                String floor,
+                String description,
+                String icon,
+                Long userId) {
+
+                this(
+                        name,
+                        floor,
+                        description,
+                        icon,
+                        userId,
+                        List.of()
+                );
+        }
 }

@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.devices.interfaces.rest.resources;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -50,6 +51,9 @@ public record SensorResource(
         Double recommendedDailyKwh,
 
         @Schema(description = "Timestamp of last received telemetry heartbeat", example = "Hace 2 minutos")
-        String lastSync
+        String lastSync,
+
+        @Schema(description = "Associated business area identifier (US-32)", example = "3")
+        Long businessAreaId
 ) {
 }

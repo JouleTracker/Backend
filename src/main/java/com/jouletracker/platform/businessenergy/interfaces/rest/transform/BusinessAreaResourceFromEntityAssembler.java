@@ -1,3 +1,4 @@
+
 package com.jouletracker.platform.businessenergy.interfaces.rest.transform;
 
 import com.jouletracker.platform.businessenergy.domain.model.aggregates.BusinessArea;
@@ -10,14 +11,19 @@ import com.jouletracker.platform.businessenergy.interfaces.rest.resources.Busine
 import java.util.List;
 
 /**
- * Assembler to translate BusinessArea aggregates and area metrics into REST response resources.
+ * Assembler to translate BusinessArea aggregates
+ * and area metrics into REST response resources.
+ *
+ * US-32: Includes shared notification recipients.
  */
 public final class BusinessAreaResourceFromEntityAssembler {
 
     private BusinessAreaResourceFromEntityAssembler() {
     }
 
-    public static BusinessAreaResource toResourceFromEntity(BusinessArea entity) {
+    public static BusinessAreaResource toResourceFromEntity(
+            BusinessArea entity) {
+
         if (entity == null) {
             return null;
         }
@@ -28,11 +34,17 @@ public final class BusinessAreaResourceFromEntityAssembler {
                 entity.getName(),
                 entity.getFloor(),
                 entity.getDescription(),
-                entity.getIcon()
+                entity.getIcon(),
+                entity.getNotificationRecipients()
+                        .stream()
+                        .sorted()
+                        .toList()
         );
     }
 
-    public static BusinessAreaMetricsResource toMetricsResourceFromEntity(BusinessAreaMetrics entity) {
+    public static BusinessAreaMetricsResource toMetricsResourceFromEntity(
+            BusinessAreaMetrics entity) {
+
         if (entity == null) {
             return null;
         }
@@ -53,14 +65,21 @@ public final class BusinessAreaResourceFromEntityAssembler {
         );
     }
 
-    public static BusinessDashboardMetricsResource toDashboardResourceFromEntity(BusinessDashboardMetrics entity) {
+    public static BusinessDashboardMetricsResource toDashboardResourceFromEntity(
+            BusinessDashboardMetrics entity) {
+
         if (entity == null) {
             return null;
         }
 
-        List<BusinessAreaMetricsResource> areas = entity.areas() != null
-                ? entity.areas().stream().map(BusinessAreaResourceFromEntityAssembler::toMetricsResourceFromEntity).toList()
-                : List.of();
+        List<BusinessAreaMetricsResource> areas =
+                entity.areas() != null
+                        ? entity.areas()
+                        .stream()
+                        .map(BusinessAreaResourceFromEntityAssembler
+                                ::toMetricsResourceFromEntity)
+                        .toList()
+                        : List.of();
 
         return new BusinessDashboardMetricsResource(
                 entity.userId(),

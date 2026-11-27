@@ -1,6 +1,8 @@
+
 package com.jouletracker.platform.devices.interfaces.rest.resources;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 @Schema(description = "Request body to partially configure an IoT sensor")
@@ -19,6 +21,10 @@ public record UpdateSensorResource(
         Long assignedDeviceId,
 
         @Schema(description = "Linked reference profile ID (null to unlink)", example = "1")
-        Long applianceProfileId
+        Long applianceProfileId,
+
+        @Positive
+        @Schema(description = "Linked business area ID (null to unlink)", example = "3")
+        Long businessAreaId
 ) {
 }
