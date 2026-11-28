@@ -30,11 +30,17 @@ public class ConsumptionHistoryQueryServiceImpl implements ConsumptionHistoryQue
     public List<ConsumptionHistory> handle(GetConsumptionHistoryQuery query) {
         ConsumptionPeriod period = query.period() != null ? query.period() : ConsumptionPeriod.MONTHLY;
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime start = resolvePeriodStart(now, period);
+        LocalDateTime end = query.to() != null ? query.to() : now;
+        LocalDateTime start = query.from() != null ? query.from() : resolvePeriodStart(end, period);
+        if (start.isAfter(end)) {
+            LocalDateTime tmp = start;
+            start = end;
+            end = tmp;
+        }
 
         List<EnergyMeasurement> measurements = query.deviceId() != null
-                ? measurementRepository.findAllByUserIdAndDeviceIdAndMeasuredAtBetween(query.userId(), query.deviceId(), start, now)
-                : measurementRepository.findAllByUserIdAndMeasuredAtBetween(query.userId(), start, now);
+                ? measurementRepository.findAllByUserIdAndDeviceIdAndMeasuredAtBetween(query.userId(), query.deviceId(), start, end)
+                : measurementRepository.findAllByUserIdAndMeasuredAtBetween(query.userId(), start, end);
 
         return measurements.stream()
                 .sorted(Comparator.comparing(EnergyMeasurement::getMeasuredAt).reversed())
@@ -54,13 +60,13 @@ public class ConsumptionHistoryQueryServiceImpl implements ConsumptionHistoryQue
 
     private String classifyStatus(Double powerKw) {
         if (powerKw == null || powerKw <= 0.0) {
-            return "Apagado";
+            return "Off";
         }
         if (powerKw < 0.05) {
             return "Standby";
         }
         if (powerKw > 2.0) {
-            return "Pico Alto";
+            return "High Peak";
         }
         return "Normal";
     }
