@@ -3,6 +3,7 @@ package com.jouletracker.platform.alerts.application.internal.commandservices;
 
 import com.jouletracker.platform.alerts.application.internal.events.CriticalAlertCreatedEvent;
 import com.jouletracker.platform.alerts.domain.model.aggregates.Alert;
+import com.jouletracker.platform.alerts.domain.model.commands.CreateAlertCommand;
 import com.jouletracker.platform.alerts.domain.model.commands.EvaluateConsumptionAlertCommand;
 import com.jouletracker.platform.alerts.domain.model.commands.MarkAlertAsReadCommand;
 import com.jouletracker.platform.alerts.domain.model.valueobjects.AlertSeverity;
@@ -10,6 +11,7 @@ import com.jouletracker.platform.alerts.domain.model.valueobjects.AlertStatus;
 import com.jouletracker.platform.alerts.domain.repositories.AlertRepository;
 import com.jouletracker.platform.devices.interfaces.acl.DevicesContextFacade;
 import com.jouletracker.platform.devices.interfaces.acl.SensorThresholdSnapshot;
+import com.jouletracker.platform.iam.interfaces.acl.IamContextFacade;
 import com.jouletracker.platform.shared.application.result.ApplicationError;
 import com.jouletracker.platform.shared.application.result.Result;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,9 @@ class AlertCommandServiceImplTest {
 
     @Mock
     private DevicesContextFacade devicesContextFacade;
+
+    @Mock
+    private IamContextFacade iamContextFacade;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -541,5 +546,68 @@ class AlertCommandServiceImplTest {
         assertEquals("ALERT_NOT_FOUND", error.code());
 
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void createAlertShouldPersistTargetedAlertWhenUserExists() {
+        when(iamContextFacade.existsUserById(2L)).thenReturn(true);
+        when(alertRepository.save(any(Alert.class))).thenAnswer(inv -> {
+            Alert alert = inv.getArgument(0);
+            alert.setId(21L);
+            return alert;
+        });
+
+        Result<List<Alert>, ApplicationError> result = commandService.handle(
+                new CreateAlertCommand(2L, false, "Grid Peak Advisory", "Reduce heavy loads until 21:00.", AlertSeverity.WARNING, "/consumo")
+        );
+
+        assertTrue(result.isSuccess());
+        List<Alert> alerts = ((Result.Success<List<Alert>, ApplicationError>) result).value();
+        assertEquals(1, alerts.size());
+        assertEquals(2L, alerts.getFirst().getUserId());
+        assertEquals(AlertSeverity.WARNING, alerts.getFirst().getSeverity());
+        assertEquals("/consumo", alerts.getFirst().getActionUrl());
+    }
+
+    @Test
+    void createAlertShouldBroadcastToAllActiveNonAdminUsers() {
+        when(iamContextFacade.fetchActiveNonAdminUserIds()).thenReturn(List.of(2L, 3L));
+        when(alertRepository.save(any(Alert.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Result<List<Alert>, ApplicationError> result = commandService.handle(
+                new CreateAlertCommand(null, true, "System Notice", "Scheduled tariff adjustment.", AlertSeverity.INFO, null)
+        );
+
+        assertTrue(result.isSuccess());
+        List<Alert> alerts = ((Result.Success<List<Alert>, ApplicationError>) result).value();
+        assertEquals(2, alerts.size());
+        assertEquals(List.of(2L, 3L), alerts.stream().map(Alert::getUserId).toList());
+        assertEquals("/consumo", alerts.getFirst().getActionUrl());
+    }
+
+    @Test
+    void createAlertShouldReturnNotFoundWhenTargetUserDoesNotExist() {
+        when(iamContextFacade.existsUserById(99L)).thenReturn(false);
+
+        Result<List<Alert>, ApplicationError> result = commandService.handle(
+                new CreateAlertCommand(99L, false, "Alert", "Body", AlertSeverity.WARNING, "/consumo")
+        );
+
+        assertTrue(result.isFailure());
+        ApplicationError error = ((Result.Failure<List<Alert>, ApplicationError>) result).error();
+        assertEquals("USER_NOT_FOUND", error.code());
+        verifyNoInteractions(alertRepository);
+    }
+
+    @Test
+    void createAlertShouldFailWhenTitleIsBlank() {
+        Result<List<Alert>, ApplicationError> result = commandService.handle(
+                new CreateAlertCommand(2L, false, "  ", "Body", AlertSeverity.WARNING, "/consumo")
+        );
+
+        assertTrue(result.isFailure());
+        ApplicationError error = ((Result.Failure<List<Alert>, ApplicationError>) result).error();
+        assertEquals("VALIDATION_ERROR", error.code());
+        verifyNoInteractions(alertRepository);
     }
 }

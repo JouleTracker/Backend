@@ -2,9 +2,12 @@ package com.jouletracker.platform.alerts.interfaces.rest;
 
 import com.jouletracker.platform.alerts.application.commandservices.AlertCommandService;
 import com.jouletracker.platform.alerts.application.queryservices.AlertQueryService;
+import com.jouletracker.platform.alerts.domain.model.commands.CreateAlertCommand;
 import com.jouletracker.platform.alerts.domain.model.commands.MarkAlertAsReadCommand;
 import com.jouletracker.platform.alerts.domain.model.queries.GetAlertsByUserIdQuery;
+import com.jouletracker.platform.alerts.domain.model.valueobjects.AlertSeverity;
 import com.jouletracker.platform.alerts.interfaces.rest.resources.AlertResource;
+import com.jouletracker.platform.alerts.interfaces.rest.resources.CreateAlertResource;
 import com.jouletracker.platform.alerts.interfaces.rest.transform.AlertResourceAssembler;
 import com.jouletracker.platform.shared.interfaces.rest.transform.ResponseEntityAssembler;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,10 +18,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -60,6 +65,48 @@ public class AlertsController {
                 .map(AlertResourceAssembler::toResourceFromEntity)
                 .toList();
         return ResponseEntity.ok(resources);
+    }
+
+    /**
+     * Emits an administrative alert to a specific user or broadcasts to all active users (US-50).
+     */
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Create or broadcast administrative alert",
+            description = "Emits a custom alert to a target user or broadcasts it to all active non-admin users when broadcast=true or userId is omitted (US-50)."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Alert(s) created successfully",
+                    content = @Content(schema = @Schema(implementation = AlertResource.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid alert payload",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "403", description = "Admin role required",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "Target user not found",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    public ResponseEntity<?> createAlert(@Valid @RequestBody CreateAlertResource resource) {
+        boolean isBroadcast = Boolean.TRUE.equals(resource.broadcast()) || resource.userId() == null;
+        var command = new CreateAlertCommand(
+                resource.userId(),
+                isBroadcast,
+                resource.title(),
+                resource.resolvedDescription(),
+                AlertSeverity.fromString(resource.severity()),
+                resource.actionUrl()
+        );
+        var result = alertCommandService.handle(command);
+        return ResponseEntityAssembler.toResponseEntityFromResult(
+                result,
+                alerts -> {
+                    List<AlertResource> resources = alerts.stream()
+                            .map(AlertResourceAssembler::toResourceFromEntity)
+                            .toList();
+                    return command.broadcast() ? resources : resources.getFirst();
+                },
+                HttpStatus.CREATED
+        );
     }
 
     /**

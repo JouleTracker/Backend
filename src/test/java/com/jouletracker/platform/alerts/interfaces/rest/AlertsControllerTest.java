@@ -3,6 +3,7 @@ package com.jouletracker.platform.alerts.interfaces.rest;
 import com.jouletracker.platform.alerts.application.commandservices.AlertCommandService;
 import com.jouletracker.platform.alerts.application.queryservices.AlertQueryService;
 import com.jouletracker.platform.alerts.domain.model.aggregates.Alert;
+import com.jouletracker.platform.alerts.domain.model.commands.CreateAlertCommand;
 import com.jouletracker.platform.alerts.domain.model.commands.MarkAlertAsReadCommand;
 import com.jouletracker.platform.alerts.domain.model.entities.AlertSummary;
 import com.jouletracker.platform.alerts.domain.model.queries.GetAlertSummaryByUserIdQuery;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -26,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -108,5 +111,71 @@ class AlertsControllerTest {
                 .andExpect(jsonPath("$[0].totalCount").value(3))
                 .andExpect(jsonPath("$[0].activeCount").value(2))
                 .andExpect(jsonPath("$[0].resolvedCount").value(1));
+    }
+
+    @Test
+    void createAlertShouldReturn201ForTargetedUser() throws Exception {
+        Alert created = new Alert(
+                10L, 2L, null, null,
+                "Peak advisory",
+                "High tariff window active",
+                AlertSeverity.WARNING, "/consumo", false, AlertStatus.ACTIVE,
+                LocalDateTime.now()
+        );
+        when(alertCommandService.handle(any(CreateAlertCommand.class)))
+                .thenReturn(Result.success(List.of(created)));
+
+        mockMvc.perform(post("/api/v1/alerts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userId": 2,
+                                  "title": "Peak advisory",
+                                  "message": "High tariff window active",
+                                  "severity": "warning",
+                                  "actionUrl": "/consumo"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.userId").value(2))
+                .andExpect(jsonPath("$.severity").value("warning"));
+    }
+
+    @Test
+    void createAlertShouldReturn201ArrayWhenBroadcastIsTrue() throws Exception {
+        Alert a1 = new Alert(11L, 2L, null, null, "Maintenance", "Window at 22:00", AlertSeverity.INFO, "/consumo", false, AlertStatus.ACTIVE, LocalDateTime.now());
+        Alert a2 = new Alert(12L, 3L, null, null, "Maintenance", "Window at 22:00", AlertSeverity.INFO, "/consumo", false, AlertStatus.ACTIVE, LocalDateTime.now());
+        when(alertCommandService.handle(any(CreateAlertCommand.class)))
+                .thenReturn(Result.success(List.of(a1, a2)));
+
+        mockMvc.perform(post("/api/v1/alerts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "broadcast": true,
+                                  "title": "Maintenance",
+                                  "description": "Window at 22:00",
+                                  "severity": "info"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].userId").value(2))
+                .andExpect(jsonPath("$[1].userId").value(3));
+    }
+
+    @Test
+    void createAlertShouldReturn400WhenTitleIsBlank() throws Exception {
+        mockMvc.perform(post("/api/v1/alerts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "userId": 2,
+                                  "title": "",
+                                  "description": "Body"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
     }
 }
