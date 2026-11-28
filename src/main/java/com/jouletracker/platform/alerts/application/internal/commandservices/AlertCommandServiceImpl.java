@@ -4,6 +4,7 @@ package com.jouletracker.platform.alerts.application.internal.commandservices;
 import com.jouletracker.platform.alerts.application.commandservices.AlertCommandService;
 import com.jouletracker.platform.alerts.application.internal.events.CriticalAlertCreatedEvent;
 import com.jouletracker.platform.alerts.domain.model.aggregates.Alert;
+import com.jouletracker.platform.alerts.domain.model.commands.CreateAlertCommand;
 import com.jouletracker.platform.alerts.domain.model.commands.EvaluateConsumptionAlertCommand;
 import com.jouletracker.platform.alerts.domain.model.commands.MarkAlertAsReadCommand;
 import com.jouletracker.platform.alerts.domain.model.valueobjects.AlertSeverity;
@@ -11,6 +12,7 @@ import com.jouletracker.platform.alerts.domain.model.valueobjects.AlertStatus;
 import com.jouletracker.platform.alerts.domain.repositories.AlertRepository;
 import com.jouletracker.platform.devices.interfaces.acl.DevicesContextFacade;
 import com.jouletracker.platform.devices.interfaces.acl.SensorThresholdSnapshot;
+import com.jouletracker.platform.iam.interfaces.acl.IamContextFacade;
 import com.jouletracker.platform.shared.application.result.ApplicationError;
 import com.jouletracker.platform.shared.application.result.Result;
 import org.springframework.context.ApplicationEventPublisher;
@@ -42,15 +44,19 @@ public class AlertCommandServiceImpl implements AlertCommandService {
 
     private final DevicesContextFacade devicesContextFacade;
 
+    private final IamContextFacade iamContextFacade;
+
     private final ApplicationEventPublisher eventPublisher;
 
     public AlertCommandServiceImpl(
             AlertRepository alertRepository,
             DevicesContextFacade devicesContextFacade,
+            IamContextFacade iamContextFacade,
             ApplicationEventPublisher eventPublisher) {
 
         this.alertRepository = alertRepository;
         this.devicesContextFacade = devicesContextFacade;
+        this.iamContextFacade = iamContextFacade;
         this.eventPublisher = eventPublisher;
     }
 
@@ -109,6 +115,59 @@ public class AlertCommandServiceImpl implements AlertCommandService {
         }
 
         return generated;
+    }
+
+    @Override
+    public Result<List<Alert>, ApplicationError> handle(CreateAlertCommand command) {
+        if (command == null || command.title() == null || command.title().isBlank()) {
+            return Result.failure(ApplicationError.validationError("title", "Title is required"));
+        }
+        if (command.description() == null || command.description().isBlank()) {
+            return Result.failure(ApplicationError.validationError("description", "Description is required"));
+        }
+
+        List<Long> targetUserIds;
+        if (command.broadcast() || command.userId() == null) {
+            targetUserIds = iamContextFacade.fetchActiveNonAdminUserIds();
+            if (targetUserIds.isEmpty()) {
+                return Result.failure(ApplicationError.validationError("userId", "No active users available for broadcast"));
+            }
+        } else {
+            if (command.userId() <= 0) {
+                return Result.failure(ApplicationError.validationError("userId", "User ID must be positive"));
+            }
+            if (!iamContextFacade.existsUserById(command.userId())) {
+                return Result.failure(ApplicationError.notFound("User", String.valueOf(command.userId())));
+            }
+            targetUserIds = List.of(command.userId());
+        }
+
+        AlertSeverity severity = command.severity() != null ? command.severity() : AlertSeverity.WARNING;
+        String actionUrl = (command.actionUrl() != null && !command.actionUrl().isBlank())
+                ? command.actionUrl().trim()
+                : "/consumo";
+        String normalizedTitle = command.title().trim();
+        String normalizedDescription = command.description().trim();
+
+        List<Alert> createdAlerts = new ArrayList<>(targetUserIds.size());
+        for (Long targetUserId : targetUserIds) {
+            Alert alert = new Alert(
+                    null,
+                    targetUserId,
+                    null,
+                    null,
+                    normalizedTitle,
+                    normalizedDescription,
+                    severity,
+                    actionUrl,
+                    false,
+                    AlertStatus.ACTIVE,
+                    LocalDateTime.now()
+            );
+            createdAlerts.add(alertRepository.save(alert));
+        }
+
+        return Result.success(createdAlerts);
     }
 
     @Override

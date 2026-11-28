@@ -9,6 +9,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -71,6 +72,18 @@ public class IamContextFacade {
                 .findById(UserId.of(userId))
                 .map(user -> user.getRoles().contains(role))
                 .orElse(false);
+    }
+
+    /**
+     * Retrieves IDs of all active non-administrator user accounts eligible for broadcast notifications.
+     *
+     * @return list of active non-admin user IDs
+     */
+    public List<Long> fetchActiveNonAdminUserIds() {
+        return userRepository.findAll().stream()
+                .filter(user -> user.canAuthenticate() && !user.getRoles().contains(Role.ROLE_ADMIN))
+                .map(user -> user.getId().value())
+                .toList();
     }
 
     /**
